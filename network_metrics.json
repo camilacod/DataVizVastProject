@@ -1,0 +1,9 @@
+{
+  "node_count": 17412,
+  "edge_count": 37857,
+  "density": 0.00012487451689424857,
+  "weakly_connected_components": 16,
+  "strongly_connected_components": 17411,
+  "largest_wcc_size": 17277,
+  "largest_scc_size": 2
+}

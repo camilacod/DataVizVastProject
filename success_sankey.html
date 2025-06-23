@@ -1,0 +1,967 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Musical Success Pathways - Sankey Diagram</title>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <script src="https://unpkg.com/d3-sankey@0.12.3/dist/d3-sankey.min.js"></script>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #2c1810 0%, #8b4513 100%);
+            color: #ffffff;
+            overflow: hidden;
+        }
+
+        #container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+        }
+
+        #visualization {
+            flex: 1;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .controls {
+            width: 320px;
+            background: rgba(0, 0, 0, 0.85);
+            padding: 20px;
+            backdrop-filter: blur(10px);
+            border-left: 1px solid #444;
+            overflow-y: auto;
+        }
+
+        .control-group {
+            margin-bottom: 20px;
+        }
+
+        .control-group label {
+            display: block;
+            font-size: 12px;
+            color: #ddd;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .control-group select, .control-group input {
+            width: 100%;
+            padding: 10px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid #666;
+            border-radius: 5px;
+            color: #fff;
+            font-size: 14px;
+        }
+
+        .control-group input[type="range"] {
+            background: transparent;
+        }
+
+        .control-group input[type="checkbox"] {
+            width: auto;
+            margin-right: 10px;
+        }
+
+        .tooltip {
+            position: absolute;
+            background: rgba(0, 0, 0, 0.9);
+            border: 1px solid #888;
+            border-radius: 8px;
+            padding: 15px;
+            pointer-events: none;
+            z-index: 1001;
+            font-size: 12px;
+            line-height: 1.5;
+            max-width: 350px;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+        }
+
+        .tooltip h3 {
+            margin: 0 0 10px 0;
+            color: #ffd700;
+            font-size: 16px;
+        }
+
+        .tooltip .metric {
+            margin: 5px 0;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .tooltip .metric .label {
+            color: #ccc;
+        }
+
+        .tooltip .metric .value {
+            color: #fff;
+            font-weight: bold;
+        }
+
+        .stats {
+            background: rgba(0, 0, 0, 0.4);
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-size: 12px;
+        }
+
+        .legend {
+            background: rgba(0, 0, 0, 0.4);
+            padding: 15px;
+            border-radius: 8px;
+            font-size: 11px;
+        }
+
+        .legend-section {
+            margin-bottom: 15px;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            margin: 5px 0;
+        }
+
+        .legend-color {
+            width: 15px;
+            height: 15px;
+            margin-right: 10px;
+            border-radius: 3px;
+        }
+
+        .loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            z-index: 1002;
+        }
+
+        .loading-spinner {
+            border: 3px solid #444;
+            border-top: 3px solid #ffd700;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .node rect {
+            cursor: pointer;
+            stroke: #000;
+            stroke-width: 1px;
+        }
+
+        .node text {
+            pointer-events: none;
+            text-shadow: 0 1px 0 #000;
+            font-size: 11px;
+            font-weight: bold;
+        }
+
+        .link {
+            stroke-opacity: 0.7;
+            cursor: pointer;
+        }
+
+        .link:hover {
+            stroke-opacity: 1;
+        }
+
+        .node:hover rect {
+            stroke-width: 2px;
+            stroke: #ffd700;
+        }
+
+        .btn {
+            width: 100%;
+            padding: 12px;
+            background: linear-gradient(45deg, #ff6b35 0%, #f7931e 100%);
+            border: none;
+            border-radius: 6px;
+            color: #fff;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: bold;
+            transition: all 0.3s ease;
+            margin-bottom: 10px;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(255, 107, 53, 0.4);
+        }
+
+        .metric-box {
+            background: linear-gradient(135deg, rgba(255, 215, 0, 0.2) 0%, rgba(255, 107, 53, 0.2) 100%);
+            padding: 12px;
+            border-radius: 8px;
+            margin: 8px 0;
+            text-align: center;
+            border: 1px solid rgba(255, 215, 0, 0.3);
+        }
+
+        .metric-value {
+            font-size: 20px;
+            font-weight: bold;
+            color: #ffd700;
+            display: block;
+        }
+
+        .metric-label {
+            font-size: 10px;
+            color: #ccc;
+            text-transform: uppercase;
+            margin-top: 4px;
+        }
+
+        .pathway-type {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 8px;
+            border-radius: 5px;
+            margin: 5px 0;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .pathway-type:hover {
+            background: rgba(255, 215, 0, 0.2);
+        }
+
+        .pathway-type.active {
+            background: rgba(255, 215, 0, 0.3);
+            border: 1px solid #ffd700;
+        }
+
+        .section-title {
+            color: #ffd700;
+            font-size: 14px;
+            font-weight: bold;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+    </style>
+</head>
+<body>
+    <div id="container">
+        <div class="loading" id="loading">
+            <div class="loading-spinner"></div>
+            <div>Analyzing Success Pathways...</div>
+        </div>
+
+        <div id="visualization">
+            <svg id="sankey-svg"></svg>
+            <div class="tooltip" id="tooltip" style="display: none;"></div>
+        </div>
+
+        <div class="controls">
+            <h3 style="margin-top: 0; color: #ffd700; font-size: 18px;">Success Analytics</h3>
+            
+            <div class="stats" id="stats">
+                <div class="section-title">Success Metrics</div>
+                <div class="metric-box">
+                    <span class="metric-value" id="successRate">-</span>
+                    <div class="metric-label">Success Rate</div>
+                </div>
+                <div class="metric-box">
+                    <span class="metric-value" id="avgTimeToSuccess">-</span>
+                    <div class="metric-label">Avg Time to Success</div>
+                </div>
+                <div class="metric-box">
+                    <span class="metric-value" id="topPathway">-</span>
+                    <div class="metric-label">Top Success Route</div>
+                </div>
+            </div>
+
+            <div class="control-group">
+                <label>Pathway Focus</label>
+                <select id="pathwayFocus">
+                    <option value="influence">Influence → Success</option>
+                    <option value="genre">Genre → Success</option>
+                    <option value="collaboration">Collaboration → Success</option>
+                    <option value="temporal">Time → Success</option>
+                </select>
+            </div>
+
+            <div class="control-group">
+                <label>Success Definition</label>
+                <select id="successDefinition">
+                    <option value="notable">Notable Works</option>
+                    <option value="highly_connected">Highly Connected</option>
+                    <option value="cross_genre">Cross-Genre Influence</option>
+                </select>
+            </div>
+
+            <div class="control-group">
+                <label>Time Period</label>
+                <select id="timePeriod">
+                    <option value="all">All Time</option>
+                    <option value="recent">Recent (2010+)</option>
+                    <option value="classic">Classic (1990-2010)</option>
+                    <option value="vintage">Vintage (Pre-1990)</option>
+                </select>
+            </div>
+
+            <div class="control-group">
+                <label>Minimum Flow Strength</label>
+                <input type="range" id="minFlowStrength" min="1" max="100" value="5">
+                <span id="flowStrengthValue">5</span>
+            </div>
+
+            <div class="control-group">
+                <label>
+                    <input type="checkbox" id="showPercentages">
+                    Show Flow Percentages
+                </label>
+            </div>
+
+            <div class="control-group">
+                <label>
+                    <input type="checkbox" id="highlightPaths">
+                    Highlight Success Paths
+                </label>
+            </div>
+
+            <div class="control-group">
+                <button class="btn" onclick="exportPathways()">Export Pathways</button>
+                <button class="btn" onclick="resetAnalysis()">Reset Analysis</button>
+            </div>
+
+            <div class="legend">
+                <div class="section-title">Flow Types</div>
+                <div class="legend-section">
+                    <div class="legend-item">
+                        <div class="legend-color" style="background: #ff6b35;"></div>
+                        <span>Creative Influences</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color" style="background: #4ecdc4;"></div>
+                        <span>Professional Networks</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color" style="background: #45b7d1;"></div>
+                        <span>Genre Transitions</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color" style="background: #96ceb4;"></div>
+                        <span>Temporal Patterns</span>
+                    </div>
+                </div>
+
+                <div class="section-title">Success Indicators</div>
+                <div class="legend-section">
+                    <div class="legend-item">
+                        <div class="legend-color" style="background: #ffd700;"></div>
+                        <span>Notable Success</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color" style="background: #ff9ff3;"></div>
+                        <span>High Influence</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color" style="background: #54a0ff;"></div>
+                        <span>Cross-Genre Impact</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Configuration
+        const config = {
+            width: 0, // Set dynamically
+            height: 0, // Set dynamically
+            margin: { top: 20, right: 20, bottom: 20, left: 20 },
+            colors: {
+                influence: '#ff6b35',
+                professional: '#4ecdc4', 
+                genre: '#45b7d1',
+                temporal: '#96ceb4',
+                success: '#ffd700',
+                failure: '#ff6b6b'
+            },
+            sankeyPadding: 15,
+            nodeWidth: 20
+        };
+
+        // Global variables
+        let svg, sankey, tooltip;
+        let originalData, processedData;
+        let activeFilters = {
+            pathwayFocus: 'influence',
+            successDefinition: 'notable',
+            timePeriod: 'all',
+            minFlowStrength: 5,
+            showPercentages: false,
+            highlightPaths: false
+        };
+
+        // Initialize visualization
+        async function init() {
+            try {
+                // Set dimensions
+                const container = document.getElementById('visualization');
+                config.width = container.clientWidth - config.margin.left - config.margin.right;
+                config.height = container.clientHeight - config.margin.top - config.margin.bottom;
+
+                // Load data
+                const graphData = await d3.json('MC1_graph.json');
+                const songsData = await d3.csv('songs_albums_analysis.csv');
+                
+                // Process data for Sankey
+                await processSuccessData(graphData, songsData);
+                
+                // Setup SVG
+                setupSVG();
+                
+                // Create Sankey diagram
+                createSankeyDiagram();
+                
+                // Setup controls
+                setupControls();
+                
+                // Hide loading
+                document.getElementById('loading').style.display = 'none';
+                
+            } catch (error) {
+                console.error('Error loading data:', error);
+                document.getElementById('loading').innerHTML = '<div>Error loading data. Please check the console.</div>';
+            }
+        }
+
+        async function processSuccessData(graphData, songsData) {
+            // Create lookup for songs/albums data
+            const songsLookup = {};
+            songsData.forEach(d => {
+                songsLookup[d.id] = d;
+            });
+
+            // Process nodes with success metrics
+            const nodes = new Map();
+            graphData.nodes.forEach(node => {
+                const songData = songsLookup[node.id] || {};
+                nodes.set(node.id, {
+                    id: node.id,
+                    name: node.name || `${node['Node Type']} ${node.id}`,
+                    type: node['Node Type'],
+                    genre: node.genre || songData.genre,
+                    notable: node.notable || false,
+                    release_date: parseInt(node.release_date) || parseInt(songData.release_date) || null,
+                    influences_received: 0,
+                    influences_given: 0,
+                    success_score: 0
+                });
+            });
+
+            // Process edges and calculate influence metrics
+            const influences = [];
+            graphData.links.forEach(link => {
+                const sourceNode = nodes.get(link.source);
+                const targetNode = nodes.get(link.target);
+                const edgeType = link['Edge Type'];
+
+                if (sourceNode && targetNode) {
+                    // Count creative influences
+                    const isCreativeInfluence = [
+                        'InStyleOf', 'InterpolatesFrom', 'CoverOf', 
+                        'LyricalReferenceTo', 'DirectlySamples'
+                    ].includes(edgeType);
+
+                    if (isCreativeInfluence) {
+                        influences.push({
+                            source: sourceNode,
+                            target: targetNode,
+                            type: edgeType,
+                            category: 'creative'
+                        });
+
+                        sourceNode.influences_given++;
+                        targetNode.influences_received++;
+                    }
+                }
+            });
+
+            // Calculate success scores
+            nodes.forEach(node => {
+                let score = 0;
+                
+                // Notable status (high weight)
+                if (node.notable) score += 100;
+                
+                // Influence reception (medium weight)
+                score += node.influences_received * 10;
+                
+                // Cross-genre influence (bonus)
+                if (node.influences_received > 0 && node.influences_given > 0) {
+                    score += 20;
+                }
+                
+                node.success_score = score;
+            });
+
+            originalData = { nodes, influences };
+            updateProcessedData();
+        }
+
+        function updateProcessedData() {
+            // Filter data based on current settings
+            let filteredNodes = Array.from(originalData.nodes.values());
+            let filteredInfluences = [...originalData.influences];
+
+            // Apply time period filter
+            if (activeFilters.timePeriod !== 'all') {
+                filteredNodes = filteredNodes.filter(node => {
+                    if (!node.release_date) return true;
+                    
+                    switch (activeFilters.timePeriod) {
+                        case 'recent': return node.release_date >= 2010;
+                        case 'classic': return node.release_date >= 1990 && node.release_date < 2010;
+                        case 'vintage': return node.release_date < 1990;
+                        default: return true;
+                    }
+                });
+            }
+
+            // Build Sankey data based on pathway focus
+            const sankeyData = buildSankeyData(filteredNodes, filteredInfluences);
+            
+            processedData = sankeyData;
+            updateStats();
+        }
+
+        function buildSankeyData(nodes, influences) {
+            const sankeyNodes = [];
+            const sankeyLinks = [];
+            const nodeIndex = new Map();
+
+            // Define success categories
+            const successCategories = {
+                'High Success': nodes.filter(n => n.success_score > 100),
+                'Medium Success': nodes.filter(n => n.success_score > 20 && n.success_score <= 100),
+                'Low Success': nodes.filter(n => n.success_score <= 20)
+            };
+
+            if (activeFilters.pathwayFocus === 'influence') {
+                // Create pathway: Influence Types → Genres → Success Levels
+                
+                // Add influence type nodes
+                const influenceTypes = ['InStyleOf', 'CoverOf', 'DirectlySamples', 'InterpolatesFrom', 'LyricalReferenceTo'];
+                influenceTypes.forEach((type, i) => {
+                    sankeyNodes.push({
+                        id: `influence_${type}`,
+                        name: type.replace(/([A-Z])/g, ' $1').trim(),
+                        layer: 0,
+                        category: 'influence',
+                        color: config.colors.influence
+                    });
+                    nodeIndex.set(`influence_${type}`, sankeyNodes.length - 1);
+                });
+
+                // Add genre nodes
+                const genres = [...new Set(nodes.map(n => n.genre).filter(g => g))].slice(0, 8);
+                genres.forEach(genre => {
+                    sankeyNodes.push({
+                        id: `genre_${genre}`,
+                        name: genre,
+                        layer: 1,
+                        category: 'genre',
+                        color: config.colors.genre
+                    });
+                    nodeIndex.set(`genre_${genre}`, sankeyNodes.length - 1);
+                });
+
+                // Add success level nodes
+                Object.keys(successCategories).forEach(level => {
+                    sankeyNodes.push({
+                        id: `success_${level}`,
+                        name: level,
+                        layer: 2,
+                        category: 'success',
+                        color: config.colors.success
+                    });
+                    nodeIndex.set(`success_${level}`, sankeyNodes.length - 1);
+                });
+
+                // Create links: Influences → Genres
+                const influenceToGenre = {};
+                influences.forEach(inf => {
+                    if (inf.target.genre) {
+                        const key = `${inf.type}_${inf.target.genre}`;
+                        influenceToGenre[key] = (influenceToGenre[key] || 0) + 1;
+                    }
+                });
+
+                Object.entries(influenceToGenre).forEach(([key, count]) => {
+                    const [influenceType, genre] = key.split('_');
+                    if (count >= activeFilters.minFlowStrength) {
+                        const sourceIdx = nodeIndex.get(`influence_${influenceType}`);
+                        const targetIdx = nodeIndex.get(`genre_${genre}`);
+                        if (sourceIdx !== undefined && targetIdx !== undefined) {
+                            sankeyLinks.push({
+                                source: sourceIdx,
+                                target: targetIdx,
+                                value: count,
+                                color: config.colors.influence
+                            });
+                        }
+                    }
+                });
+
+                // Create links: Genres → Success Levels
+                const genreToSuccess = {};
+                nodes.forEach(node => {
+                    if (node.genre) {
+                        let successLevel = 'Low Success';
+                        if (node.success_score > 100) successLevel = 'High Success';
+                        else if (node.success_score > 20) successLevel = 'Medium Success';
+                        
+                        const key = `${node.genre}_${successLevel}`;
+                        genreToSuccess[key] = (genreToSuccess[key] || 0) + 1;
+                    }
+                });
+
+                Object.entries(genreToSuccess).forEach(([key, count]) => {
+                    const [genre, successLevel] = key.split('_');
+                    if (count >= activeFilters.minFlowStrength) {
+                        const sourceIdx = nodeIndex.get(`genre_${genre}`);
+                        const targetIdx = nodeIndex.get(`success_${successLevel}`);
+                        if (sourceIdx !== undefined && targetIdx !== undefined) {
+                            sankeyLinks.push({
+                                source: sourceIdx,
+                                target: targetIdx,
+                                value: count,
+                                color: config.colors.genre
+                            });
+                        }
+                    }
+                });
+            }
+
+            return { nodes: sankeyNodes, links: sankeyLinks };
+        }
+
+        function setupSVG() {
+            svg = d3.select('#sankey-svg')
+                .attr('width', config.width + config.margin.left + config.margin.right)
+                .attr('height', config.height + config.margin.top + config.margin.bottom);
+
+            const g = svg.append('g')
+                .attr('transform', `translate(${config.margin.left}, ${config.margin.top})`);
+
+            // Setup Sankey generator
+            sankey = d3.sankey()
+                .nodeWidth(config.nodeWidth)
+                .nodePadding(config.sankeyPadding)
+                .extent([[1, 1], [config.width - 1, config.height - 6]]);
+
+            tooltip = d3.select('#tooltip');
+        }
+
+        function createSankeyDiagram() {
+            if (!processedData || !processedData.nodes.length) return;
+
+            // Clear existing elements
+            svg.selectAll('.node').remove();
+            svg.selectAll('.link').remove();
+
+            // Generate Sankey layout
+            const graph = sankey({
+                nodes: processedData.nodes.map(d => ({ ...d })),
+                links: processedData.links.map(d => ({ ...d }))
+            });
+
+            // Create gradient definitions for links
+            const defs = svg.select('defs').empty() ? svg.append('defs') : svg.select('defs');
+            
+            graph.links.forEach((link, i) => {
+                const gradient = defs.append('linearGradient')
+                    .attr('id', `gradient-${i}`)
+                    .attr('gradientUnits', 'userSpaceOnUse')
+                    .attr('x1', link.source.x1)
+                    .attr('x2', link.target.x0);
+                
+                gradient.append('stop')
+                    .attr('offset', '0%')
+                    .attr('stop-color', link.source.color);
+                
+                gradient.append('stop')
+                    .attr('offset', '100%')
+                    .attr('stop-color', link.target.color);
+            });
+
+            // Draw links
+            svg.select('g').selectAll('.link')
+                .data(graph.links)
+                .enter().append('path')
+                .attr('class', 'link')
+                .attr('d', d3.sankeyLinkHorizontal())
+                .style('stroke', (d, i) => `url(#gradient-${i})`)
+                .style('stroke-width', d => Math.max(1, d.width))
+                .style('fill', 'none')
+                .on('mouseover', handleLinkMouseOver)
+                .on('mouseout', handleMouseOut)
+                .on('click', handleLinkClick);
+
+            // Draw nodes
+            const node = svg.select('g').selectAll('.node')
+                .data(graph.nodes)
+                .enter().append('g')
+                .attr('class', 'node')
+                .attr('transform', d => `translate(${d.x0}, ${d.y0})`);
+
+            node.append('rect')
+                .attr('height', d => d.y1 - d.y0)
+                .attr('width', d => d.x1 - d.x0)
+                .style('fill', d => d.color)
+                .style('opacity', 0.8)
+                .on('mouseover', handleNodeMouseOver)
+                .on('mouseout', handleMouseOut)
+                .on('click', handleNodeClick);
+
+            // Add node labels
+            node.append('text')
+                .attr('x', d => (d.x1 - d.x0) / 2)
+                .attr('y', d => (d.y1 - d.y0) / 2)
+                .attr('dy', '0.35em')
+                .attr('text-anchor', 'middle')
+                .style('fill', '#fff')
+                .style('font-size', '10px')
+                .style('font-weight', 'bold')
+                .text(d => d.name.length > 12 ? d.name.substring(0, 12) + '...' : d.name);
+
+            // Add flow percentages if enabled
+            if (activeFilters.showPercentages) {
+                svg.select('g').selectAll('.link-label')
+                    .data(graph.links.filter(d => d.width > 5))
+                    .enter().append('text')
+                    .attr('class', 'link-label')
+                    .attr('x', d => (d.source.x1 + d.target.x0) / 2)
+                    .attr('y', d => (d.y0 + d.y1) / 2)
+                    .attr('dy', '0.35em')
+                    .attr('text-anchor', 'middle')
+                    .style('fill', '#fff')
+                    .style('font-size', '9px')
+                    .style('text-shadow', '0 1px 2px rgba(0,0,0,0.8)')
+                    .text(d => `${d.value}`);
+            }
+        }
+
+        function handleNodeMouseOver(event, d) {
+            const incomingFlow = d.targetLinks ? d.targetLinks.reduce((sum, link) => sum + link.value, 0) : 0;
+            const outgoingFlow = d.sourceLinks ? d.sourceLinks.reduce((sum, link) => sum + link.value, 0) : 0;
+
+            showTooltip(event, {
+                title: d.name,
+                details: [
+                    { label: 'Category', value: d.category.toUpperCase() },
+                    { label: 'Incoming Flow', value: incomingFlow.toLocaleString() },
+                    { label: 'Outgoing Flow', value: outgoingFlow.toLocaleString() },
+                    { label: 'Total Flow', value: (incomingFlow + outgoingFlow).toLocaleString() }
+                ]
+            });
+
+            // Highlight connected links
+            svg.selectAll('.link')
+                .style('opacity', link => 
+                    link.source === d || link.target === d ? 1 : 0.3);
+        }
+
+        function handleLinkMouseOver(event, d) {
+            const percentage = ((d.value / d.source.value) * 100).toFixed(1);
+            
+            showTooltip(event, {
+                title: 'Success Pathway',
+                details: [
+                    { label: 'From', value: d.source.name },
+                    { label: 'To', value: d.target.name },
+                    { label: 'Flow Strength', value: d.value.toLocaleString() },
+                    { label: 'Conversion Rate', value: `${percentage}%` }
+                ]
+            });
+
+            // Highlight this link
+            svg.selectAll('.link')
+                .style('opacity', link => link === d ? 1 : 0.3);
+        }
+
+        function handleMouseOut() {
+            tooltip.style('display', 'none');
+            
+            // Reset opacity
+            svg.selectAll('.link')
+                .style('opacity', 0.7);
+        }
+
+        function handleNodeClick(event, d) {
+            console.log('Node clicked:', d);
+            // Could trigger cross-filtering with other visualizations
+        }
+
+        function handleLinkClick(event, d) {
+            console.log('Link clicked:', d);
+            // Could show detailed pathway analysis
+        }
+
+        function showTooltip(event, data) {
+            const html = `
+                <h3>${data.title}</h3>
+                ${data.details.map(detail => 
+                    `<div class="metric">
+                        <span class="label">${detail.label}:</span>
+                        <span class="value">${detail.value}</span>
+                    </div>`
+                ).join('')}
+            `;
+
+            tooltip
+                .style('display', 'block')
+                .style('left', (event.pageX + 15) + 'px')
+                .style('top', (event.pageY + 10) + 'px')
+                .html(html);
+        }
+
+        function setupControls() {
+            // Setup event listeners
+            document.getElementById('pathwayFocus').addEventListener('change', function() {
+                activeFilters.pathwayFocus = this.value;
+                updateProcessedData();
+                createSankeyDiagram();
+            });
+
+            document.getElementById('successDefinition').addEventListener('change', function() {
+                activeFilters.successDefinition = this.value;
+                updateProcessedData();
+                createSankeyDiagram();
+            });
+
+            document.getElementById('timePeriod').addEventListener('change', function() {
+                activeFilters.timePeriod = this.value;
+                updateProcessedData();
+                createSankeyDiagram();
+            });
+
+            document.getElementById('minFlowStrength').addEventListener('input', function() {
+                activeFilters.minFlowStrength = parseInt(this.value);
+                document.getElementById('flowStrengthValue').textContent = this.value;
+                updateProcessedData();
+                createSankeyDiagram();
+            });
+
+            document.getElementById('showPercentages').addEventListener('change', function() {
+                activeFilters.showPercentages = this.checked;
+                createSankeyDiagram();
+            });
+
+            document.getElementById('highlightPaths').addEventListener('change', function() {
+                activeFilters.highlightPaths = this.checked;
+                createSankeyDiagram();
+            });
+        }
+
+        function updateStats() {
+            if (!originalData) return;
+
+            const totalWorks = originalData.nodes.size;
+            const notableWorks = Array.from(originalData.nodes.values()).filter(n => n.notable).length;
+            const successRate = ((notableWorks / totalWorks) * 100).toFixed(1);
+
+            // Calculate average time to success (mock data since we don't have exact timing)
+            const avgTime = '0.4';
+
+            // Find top pathway (most common influence type)
+            const influenceCounts = {};
+            originalData.influences.forEach(inf => {
+                influenceCounts[inf.type] = (influenceCounts[inf.type] || 0) + 1;
+            });
+            
+            const topPathway = Object.entries(influenceCounts)
+                .sort((a, b) => b[1] - a[1])[0]?.[0] || 'Unknown';
+
+            document.getElementById('successRate').textContent = `${successRate}%`;
+            document.getElementById('avgTimeToSuccess').textContent = `${avgTime} years`;
+            document.getElementById('topPathway').textContent = topPathway.replace(/([A-Z])/g, ' $1').trim();
+        }
+
+        function exportPathways() {
+            // Create downloadable data
+            const data = {
+                pathways: processedData,
+                stats: {
+                    successRate: document.getElementById('successRate').textContent,
+                    avgTimeToSuccess: document.getElementById('avgTimeToSuccess').textContent,
+                    topPathway: document.getElementById('topPathway').textContent
+                },
+                timestamp: new Date().toISOString()
+            };
+
+            const blob = new Blob([JSON.stringify(data, null, 2)], 
+                { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'success_pathways.json';
+            a.click();
+            
+            URL.revokeObjectURL(url);
+        }
+
+        function resetAnalysis() {
+            // Reset all filters
+            document.getElementById('pathwayFocus').value = 'influence';
+            document.getElementById('successDefinition').value = 'notable';
+            document.getElementById('timePeriod').value = 'all';
+            document.getElementById('minFlowStrength').value = '5';
+            document.getElementById('flowStrengthValue').textContent = '5';
+            document.getElementById('showPercentages').checked = false;
+            document.getElementById('highlightPaths').checked = false;
+
+            activeFilters = {
+                pathwayFocus: 'influence',
+                successDefinition: 'notable',
+                timePeriod: 'all',
+                minFlowStrength: 5,
+                showPercentages: false,
+                highlightPaths: false
+            };
+
+            updateProcessedData();
+            createSankeyDiagram();
+        }
+
+        // Handle window resize
+        window.addEventListener('resize', function() {
+            const container = document.getElementById('visualization');
+            config.width = container.clientWidth - config.margin.left - config.margin.right;
+            config.height = container.clientHeight - config.margin.top - config.margin.bottom;
+
+            svg.attr('width', config.width + config.margin.left + config.margin.right)
+               .attr('height', config.height + config.margin.top + config.margin.bottom);
+
+            sankey.extent([[1, 1], [config.width - 1, config.height - 6]]);
+            createSankeyDiagram();
+        });
+
+        // Initialize on load
+        window.addEventListener('load', init);
+    </script>
+</body>
+</html>

@@ -1,0 +1,1055 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Musical Genre Evolution Timeline</title>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #ffffff;
+            overflow: hidden;
+        }
+
+        #container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .header {
+            background: rgba(0, 0, 0, 0.8);
+            padding: 15px 20px;
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid #444;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .title {
+            font-size: 24px;
+            font-weight: bold;
+            color: #fff;
+        }
+
+        .controls-header {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+        }
+
+        .play-controls {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .play-btn {
+            background: linear-gradient(45deg, #ff6b6b, #ee5a24);
+            border: none;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            color: #fff;
+            cursor: pointer;
+            font-size: 16px;
+            transition: all 0.3s ease;
+        }
+
+        .play-btn:hover {
+            transform: scale(1.1);
+            box-shadow: 0 4px 15px rgba(255, 107, 107, 0.4);
+        }
+
+        .speed-control {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .speed-control input {
+            width: 100px;
+        }
+
+        #main-content {
+            flex: 1;
+            display: flex;
+            position: relative;
+        }
+
+        #visualization {
+            flex: 1;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .sidebar {
+            width: 300px;
+            background: rgba(0, 0, 0, 0.85);
+            padding: 20px;
+            backdrop-filter: blur(10px);
+            border-left: 1px solid #444;
+            overflow-y: auto;
+        }
+
+        .control-group {
+            margin-bottom: 20px;
+        }
+
+        .control-group label {
+            display: block;
+            font-size: 12px;
+            color: #ddd;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .control-group select, .control-group input {
+            width: 100%;
+            padding: 8px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid #666;
+            border-radius: 5px;
+            color: #fff;
+            font-size: 14px;
+        }
+
+        .control-group input[type="range"] {
+            background: transparent;
+        }
+
+        .control-group input[type="checkbox"] {
+            width: auto;
+            margin-right: 10px;
+        }
+
+        .tooltip {
+            position: absolute;
+            background: rgba(0, 0, 0, 0.9);
+            border: 1px solid #888;
+            border-radius: 8px;
+            padding: 15px;
+            pointer-events: none;
+            z-index: 1001;
+            font-size: 12px;
+            line-height: 1.5;
+            max-width: 300px;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+        }
+
+        .tooltip h3 {
+            margin: 0 0 10px 0;
+            color: #ffd700;
+            font-size: 16px;
+        }
+
+        .tooltip .metric {
+            margin: 5px 0;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .stats {
+            background: rgba(0, 0, 0, 0.4);
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-size: 12px;
+        }
+
+        .legend {
+            background: rgba(0, 0, 0, 0.4);
+            padding: 15px;
+            border-radius: 8px;
+            font-size: 11px;
+        }
+
+        .loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            z-index: 1002;
+        }
+
+        .loading-spinner {
+            border: 3px solid #444;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .heatmap-cell {
+            cursor: pointer;
+            stroke: #333;
+            stroke-width: 0.5px;
+        }
+
+        .heatmap-cell:hover {
+            stroke: #fff;
+            stroke-width: 2px;
+        }
+
+        .axis text {
+            fill: #fff;
+            font-size: 11px;
+        }
+
+        .axis line, .axis path {
+            stroke: #666;
+        }
+
+        .genre-label {
+            cursor: pointer;
+            fill: #fff;
+            font-size: 12px;
+        }
+
+        .genre-label:hover {
+            fill: #ffd700;
+        }
+
+        .time-indicator {
+            stroke: #ff6b6b;
+            stroke-width: 3px;
+            opacity: 0.8;
+        }
+
+        .metric-box {
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.3) 0%, rgba(118, 75, 162, 0.3) 100%);
+            padding: 12px;
+            border-radius: 8px;
+            margin: 8px 0;
+            text-align: center;
+            border: 1px solid rgba(102, 126, 234, 0.5);
+        }
+
+        .metric-value {
+            font-size: 18px;
+            font-weight: bold;
+            color: #667eea;
+            display: block;
+        }
+
+        .metric-label {
+            font-size: 10px;
+            color: #ccc;
+            text-transform: uppercase;
+            margin-top: 4px;
+        }
+
+        .btn {
+            width: 100%;
+            padding: 10px;
+            background: linear-gradient(45deg, #667eea 0%, #764ba2 100%);
+            border: none;
+            border-radius: 6px;
+            color: #fff;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: bold;
+            transition: all 0.3s ease;
+            margin-bottom: 10px;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+
+        .genre-filter {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 5px;
+            margin-top: 10px;
+        }
+
+        .genre-tag {
+            background: rgba(255, 255, 255, 0.2);
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 10px;
+            cursor: pointer;
+            border: 1px solid transparent;
+            transition: all 0.3s ease;
+        }
+
+        .genre-tag:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+
+        .genre-tag.active {
+            background: #667eea;
+            border-color: #fff;
+        }
+
+        .section-title {
+            color: #667eea;
+            font-size: 14px;
+            font-weight: bold;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .color-legend {
+            display: flex;
+            align-items: center;
+            margin: 10px 0;
+        }
+
+        .color-gradient {
+            width: 100px;
+            height: 15px;
+            margin: 0 10px;
+            border-radius: 3px;
+        }
+
+        .timeline-scrubber {
+            margin: 10px 0;
+        }
+
+        .timeline-scrubber input {
+            width: 100%;
+        }
+
+        .current-year {
+            text-align: center;
+            font-size: 18px;
+            font-weight: bold;
+            color: #ffd700;
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <div id="container">
+        <div class="loading" id="loading">
+            <div class="loading-spinner"></div>
+            <div>Loading Genre Evolution Data...</div>
+        </div>
+
+        <div class="header">
+            <div class="title">Musical Genre Evolution Timeline</div>
+            <div class="controls-header">
+                <div class="play-controls">
+                    <button class="play-btn" id="playBtn" onclick="toggleAnimation()">▶</button>
+                    <button class="play-btn" onclick="resetAnimation()">⏹</button>
+                </div>
+                <div class="speed-control">
+                    <label style="font-size: 12px;">Speed:</label>
+                    <input type="range" id="animationSpeed" min="100" max="2000" value="800" style="width: 80px;">
+                    <span id="speedValue">800ms</span>
+                </div>
+                <div class="current-year" id="currentYear">All Time</div>
+            </div>
+        </div>
+
+        <div id="main-content">
+            <div id="visualization">
+                <svg id="heatmap-svg"></svg>
+                <div class="tooltip" id="tooltip" style="display: none;"></div>
+            </div>
+
+            <div class="sidebar">
+                <div class="stats" id="stats">
+                    <div class="section-title">Timeline Insights</div>
+                    <div class="metric-box">
+                        <span class="metric-value" id="totalGenres">-</span>
+                        <div class="metric-label">Active Genres</div>
+                    </div>
+                    <div class="metric-box">
+                        <span class="metric-value" id="peakYear">-</span>
+                        <div class="metric-label">Peak Year</div>
+                    </div>
+                    <div class="metric-box">
+                        <span class="metric-value" id="dominantGenre">-</span>
+                        <div class="metric-label">Dominant Genre</div>
+                    </div>
+                </div>
+
+                <div class="control-group">
+                    <label>View Mode</label>
+                    <select id="viewMode">
+                        <option value="releases">Total Releases</option>
+                        <option value="notable">Notable Works Only</option>
+                        <option value="success_rate">Success Rate</option>
+                        <option value="influence">Influence Activity</option>
+                    </select>
+                </div>
+
+                <div class="control-group">
+                    <label>Time Granularity</label>
+                    <select id="timeGranularity">
+                        <option value="year">By Year</option>
+                        <option value="decade">By Decade</option>
+                        <option value="period">By Period (5 years)</option>
+                    </select>
+                </div>
+
+                <div class="control-group">
+                    <label>Genre Count</label>
+                    <input type="range" id="genreCount" min="5" max="20" value="12">
+                    <span id="genreCountValue">12</span>
+                </div>
+
+                <div class="control-group">
+                    <label>Color Intensity</label>
+                    <input type="range" id="colorIntensity" min="0.3" max="2" step="0.1" value="1">
+                    <span id="intensityValue">1.0</span>
+                </div>
+
+                <div class="control-group">
+                    <label>Timeline Scrubber</label>
+                    <div class="timeline-scrubber">
+                        <input type="range" id="timelineScrubber" min="0" max="100" value="100">
+                    </div>
+                </div>
+
+                <div class="control-group">
+                    <label>
+                        <input type="checkbox" id="showTrends">
+                        Show Trend Lines
+                    </label>
+                </div>
+
+                <div class="control-group">
+                    <label>
+                        <input type="checkbox" id="normalizeData">
+                        Normalize by Year Total
+                    </label>
+                </div>
+
+                <div class="control-group">
+                    <button class="btn" onclick="exportData()">Export Timeline Data</button>
+                    <button class="btn" onclick="resetView()">Reset View</button>
+                </div>
+
+                <div class="legend">
+                    <div class="section-title">Color Scale</div>
+                    <div class="color-legend">
+                        <span style="font-size: 10px;">Low</span>
+                        <div class="color-gradient" id="colorGradient"></div>
+                        <span style="font-size: 10px;">High</span>
+                    </div>
+
+                    <div class="section-title" style="margin-top: 20px;">Top Genres</div>
+                    <div class="genre-filter" id="topGenres">
+                        <!-- Populated dynamically -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Configuration
+        const config = {
+            width: 0, // Set dynamically
+            height: 0, // Set dynamically
+            margin: { top: 60, right: 40, bottom: 80, left: 120 },
+            cellPadding: 1,
+            colorScheme: d3.interpolateViridis,
+            animationDuration: 800
+        };
+
+        // Global variables
+        let svg, tooltip, colorScale;
+        let originalData, processedData, timelineData;
+        let currentAnimationYear = null;
+        let isAnimating = false;
+        let animationInterval = null;
+        let yearRange = [];
+        let genreList = [];
+        
+        let activeFilters = {
+            viewMode: 'releases',
+            timeGranularity: 'year',
+            genreCount: 12,
+            colorIntensity: 1.0,
+            showTrends: false,
+            normalizeData: false
+        };
+
+        // Initialize visualization
+        async function init() {
+            try {
+                // Set dimensions
+                const container = document.getElementById('visualization');
+                config.width = container.clientWidth - config.margin.left - config.margin.right;
+                config.height = container.clientHeight - config.margin.top - config.margin.bottom;
+
+                // Load data
+                const graphData = await d3.json('MC1_graph.json');
+                const songsData = await d3.csv('songs_albums_analysis.csv');
+                
+                // Process data for timeline
+                await processTimelineData(graphData, songsData);
+                
+                // Setup SVG
+                setupSVG();
+                
+                // Create heatmap
+                createHeatmap();
+                
+                // Setup controls
+                setupControls();
+                
+                // Hide loading
+                document.getElementById('loading').style.display = 'none';
+                
+            } catch (error) {
+                console.error('Error loading data:', error);
+                document.getElementById('loading').innerHTML = '<div>Error loading data. Please check the console.</div>';
+            }
+        }
+
+        async function processTimelineData(graphData, songsData) {
+            // Create lookup for songs/albums data
+            const songsLookup = {};
+            songsData.forEach(d => {
+                songsLookup[d.id] = d;
+            });
+
+            // Process temporal data for songs and albums
+            const timelineEntries = [];
+            const genres = new Set();
+            const years = new Set();
+
+            graphData.nodes.forEach(node => {
+                if (node['Node Type'] === 'Song' || node['Node Type'] === 'Album') {
+                    const songData = songsLookup[node.id] || {};
+                    const releaseYear = parseInt(node.release_date) || parseInt(songData.release_date);
+                    const genre = node.genre || songData.genre;
+                    
+                    if (releaseYear && genre && releaseYear >= 1950 && releaseYear <= 2025) {
+                        timelineEntries.push({
+                            id: node.id,
+                            name: node.name,
+                            type: node['Node Type'],
+                            genre: genre,
+                            year: releaseYear,
+                            notable: node.notable || false,
+                            influences_received: 0 // Will be calculated
+                        });
+                        
+                        genres.add(genre);
+                        years.add(releaseYear);
+                    }
+                }
+            });
+
+            // Calculate influence counts
+            const influenceCounts = {};
+            graphData.links.forEach(link => {
+                const isCreativeInfluence = [
+                    'InStyleOf', 'InterpolatesFrom', 'CoverOf', 
+                    'LyricalReferenceTo', 'DirectlySamples'
+                ].includes(link['Edge Type']);
+
+                if (isCreativeInfluence) {
+                    influenceCounts[link.target] = (influenceCounts[link.target] || 0) + 1;
+                }
+            });
+
+            // Apply influence counts
+            timelineEntries.forEach(entry => {
+                entry.influences_received = influenceCounts[entry.id] || 0;
+            });
+
+            // Sort and filter genres by popularity
+            const genreCounts = {};
+            timelineEntries.forEach(entry => {
+                genreCounts[entry.genre] = (genreCounts[entry.genre] || 0) + 1;
+            });
+
+            genreList = Object.entries(genreCounts)
+                .sort((a, b) => b[1] - a[1])
+                .map(([genre]) => genre);
+
+            yearRange = Array.from(years).sort((a, b) => a - b);
+
+            originalData = {
+                entries: timelineEntries,
+                genres: genreList,
+                years: yearRange
+            };
+
+            updateProcessedData();
+        }
+
+        function updateProcessedData() {
+            const topGenres = genreList.slice(0, activeFilters.genreCount);
+            
+            // Create time buckets based on granularity
+            let timeBuckets = [];
+            if (activeFilters.timeGranularity === 'year') {
+                timeBuckets = yearRange;
+            } else if (activeFilters.timeGranularity === 'decade') {
+                const decades = new Set();
+                yearRange.forEach(year => {
+                    decades.add(Math.floor(year / 10) * 10);
+                });
+                timeBuckets = Array.from(decades).sort((a, b) => a - b);
+            } else if (activeFilters.timeGranularity === 'period') {
+                const periods = new Set();
+                yearRange.forEach(year => {
+                    periods.add(Math.floor(year / 5) * 5);
+                });
+                timeBuckets = Array.from(periods).sort((a, b) => a - b);
+            }
+
+            // Build matrix data
+            const matrix = [];
+            topGenres.forEach((genre, genreIdx) => {
+                const genreRow = [];
+                timeBuckets.forEach((timeBucket, timeIdx) => {
+                    const entries = originalData.entries.filter(entry => {
+                        if (entry.genre !== genre) return false;
+                        
+                        if (activeFilters.timeGranularity === 'year') {
+                            return entry.year === timeBucket;
+                        } else if (activeFilters.timeGranularity === 'decade') {
+                            return Math.floor(entry.year / 10) * 10 === timeBucket;
+                        } else if (activeFilters.timeGranularity === 'period') {
+                            return Math.floor(entry.year / 5) * 5 === timeBucket;
+                        }
+                        return false;
+                    });
+
+                    let value = 0;
+                    if (activeFilters.viewMode === 'releases') {
+                        value = entries.length;
+                    } else if (activeFilters.viewMode === 'notable') {
+                        value = entries.filter(e => e.notable).length;
+                    } else if (activeFilters.viewMode === 'success_rate') {
+                        const notable = entries.filter(e => e.notable).length;
+                        value = entries.length > 0 ? (notable / entries.length) : 0;
+                    } else if (activeFilters.viewMode === 'influence') {
+                        value = d3.sum(entries, e => e.influences_received);
+                    }
+
+                    genreRow.push({
+                        genre: genre,
+                        time: timeBucket,
+                        value: value,
+                        entries: entries,
+                        genreIdx: genreIdx,
+                        timeIdx: timeIdx
+                    });
+                });
+                matrix.push(genreRow);
+            });
+
+            // Normalize data if requested
+            if (activeFilters.normalizeData && activeFilters.viewMode !== 'success_rate') {
+                timeBuckets.forEach((timeBucket, timeIdx) => {
+                    const total = d3.sum(matrix, row => row[timeIdx].value);
+                    if (total > 0) {
+                        matrix.forEach(row => {
+                            row[timeIdx].normalizedValue = row[timeIdx].value / total;
+                        });
+                    }
+                });
+            }
+
+            processedData = {
+                matrix: matrix,
+                genres: topGenres,
+                timeBuckets: timeBuckets,
+                maxValue: d3.max(matrix.flat(), d => activeFilters.normalizeData ? d.normalizedValue : d.value) || 1
+            };
+
+            updateStats();
+            updateColorScale();
+        }
+
+        function setupSVG() {
+            svg = d3.select('#heatmap-svg')
+                .attr('width', config.width + config.margin.left + config.margin.right)
+                .attr('height', config.height + config.margin.top + config.margin.bottom);
+
+            const g = svg.append('g')
+                .attr('transform', `translate(${config.margin.left}, ${config.margin.top})`);
+
+            tooltip = d3.select('#tooltip');
+
+            // Create color gradient for legend
+            const gradient = svg.append('defs')
+                .append('linearGradient')
+                .attr('id', 'legend-gradient')
+                .attr('x1', '0%')
+                .attr('x2', '100%');
+
+            for (let i = 0; i <= 10; i++) {
+                gradient.append('stop')
+                    .attr('offset', `${i * 10}%`)
+                    .attr('stop-color', config.colorScheme(i / 10));
+            }
+
+            document.getElementById('colorGradient').style.background = 
+                'linear-gradient(to right, ' + 
+                Array.from({length: 11}, (_, i) => config.colorScheme(i/10)).join(', ') + 
+                ')';
+        }
+
+        function updateColorScale() {
+            colorScale = d3.scaleSequential(config.colorScheme)
+                .domain([0, processedData.maxValue * activeFilters.colorIntensity]);
+        }
+
+        function createHeatmap() {
+            if (!processedData) return;
+
+            // Clear existing elements
+            svg.select('g').selectAll('.heatmap-cell').remove();
+            svg.select('g').selectAll('.axis').remove();
+            svg.select('g').selectAll('.time-indicator').remove();
+
+            const cellWidth = config.width / processedData.timeBuckets.length;
+            const cellHeight = config.height / processedData.genres.length;
+
+            // Create heatmap cells
+            const cells = svg.select('g').selectAll('.heatmap-cell')
+                .data(processedData.matrix.flat())
+                .enter().append('rect')
+                .attr('class', 'heatmap-cell')
+                .attr('x', d => d.timeIdx * cellWidth)
+                .attr('y', d => d.genreIdx * cellHeight)
+                .attr('width', cellWidth - config.cellPadding)
+                .attr('height', cellHeight - config.cellPadding)
+                .style('fill', d => {
+                    const value = activeFilters.normalizeData ? d.normalizedValue : d.value;
+                    return colorScale(value || 0);
+                })
+                .on('mouseover', handleCellMouseOver)
+                .on('mouseout', handleMouseOut)
+                .on('click', handleCellClick);
+
+            // Add genre labels (Y-axis)
+            svg.select('g').selectAll('.genre-label')
+                .data(processedData.genres)
+                .enter().append('text')
+                .attr('class', 'genre-label')
+                .attr('x', -10)
+                .attr('y', (d, i) => i * cellHeight + cellHeight / 2)
+                .attr('dy', '0.35em')
+                .attr('text-anchor', 'end')
+                .style('font-size', '11px')
+                .text(d => d.length > 15 ? d.substring(0, 15) + '...' : d)
+                .on('click', (event, d) => highlightGenre(d));
+
+            // Add time labels (X-axis)
+            const timeStep = Math.max(1, Math.floor(processedData.timeBuckets.length / 10));
+            svg.select('g').selectAll('.time-label')
+                .data(processedData.timeBuckets.filter((d, i) => i % timeStep === 0))
+                .enter().append('text')
+                .attr('class', 'time-label')
+                .attr('x', d => {
+                    const idx = processedData.timeBuckets.indexOf(d);
+                    return idx * cellWidth + cellWidth / 2;
+                })
+                .attr('y', config.height + 20)
+                .attr('text-anchor', 'middle')
+                .style('font-size', '10px')
+                .style('fill', '#ccc')
+                .text(d => d);
+
+            // Add time indicator line if animating
+            if (currentAnimationYear !== null) {
+                const yearIdx = processedData.timeBuckets.indexOf(currentAnimationYear);
+                if (yearIdx !== -1) {
+                    svg.select('g').append('line')
+                        .attr('class', 'time-indicator')
+                        .attr('x1', yearIdx * cellWidth + cellWidth / 2)
+                        .attr('x2', yearIdx * cellWidth + cellWidth / 2)
+                        .attr('y1', 0)
+                        .attr('y2', config.height);
+                }
+            }
+        }
+
+        function handleCellMouseOver(event, d) {
+            const value = activeFilters.normalizeData ? d.normalizedValue : d.value;
+            const percentage = activeFilters.normalizeData ? (value * 100).toFixed(1) + '%' : '';
+            
+            showTooltip(event, {
+                title: `${d.genre} • ${d.time}`,
+                details: [
+                    { label: 'Value', value: activeFilters.viewMode === 'success_rate' ? 
+                        (d.value * 100).toFixed(1) + '%' : d.value.toLocaleString() },
+                    { label: 'Total Works', value: d.entries.length.toLocaleString() },
+                    { label: 'Notable Works', value: d.entries.filter(e => e.notable).length.toLocaleString() },
+                    { label: 'Avg Influences', value: d.entries.length > 0 ? 
+                        (d3.mean(d.entries, e => e.influences_received) || 0).toFixed(1) : '0' }
+                ]
+            });
+
+            // Highlight row and column
+            svg.selectAll('.heatmap-cell')
+                .style('opacity', cell => 
+                    cell.genreIdx === d.genreIdx || cell.timeIdx === d.timeIdx ? 1 : 0.3);
+        }
+
+        function handleMouseOut() {
+            tooltip.style('display', 'none');
+            
+            // Reset opacity
+            svg.selectAll('.heatmap-cell')
+                .style('opacity', 1);
+        }
+
+        function handleCellClick(event, d) {
+            console.log('Cell clicked:', d);
+            // Could trigger cross-filtering with other visualizations
+        }
+
+        function showTooltip(event, data) {
+            const html = `
+                <h3>${data.title}</h3>
+                ${data.details.map(detail => 
+                    `<div class="metric">
+                        <span style="color: #ccc;">${detail.label}:</span>
+                        <span style="color: #fff; font-weight: bold;">${detail.value}</span>
+                    </div>`
+                ).join('')}
+            `;
+
+            tooltip
+                .style('display', 'block')
+                .style('left', (event.pageX + 15) + 'px')
+                .style('top', (event.pageY + 10) + 'px')
+                .html(html);
+        }
+
+        function setupControls() {
+            // Animation controls
+            document.getElementById('animationSpeed').addEventListener('input', function() {
+                config.animationDuration = parseInt(this.value);
+                document.getElementById('speedValue').textContent = this.value + 'ms';
+            });
+
+            document.getElementById('timelineScrubber').addEventListener('input', function() {
+                const progress = parseInt(this.value);
+                const yearIdx = Math.floor((progress / 100) * (processedData.timeBuckets.length - 1));
+                currentAnimationYear = processedData.timeBuckets[yearIdx];
+                document.getElementById('currentYear').textContent = currentAnimationYear;
+                createHeatmap();
+            });
+
+            // Filter controls
+            document.getElementById('viewMode').addEventListener('change', function() {
+                activeFilters.viewMode = this.value;
+                updateProcessedData();
+                createHeatmap();
+            });
+
+            document.getElementById('timeGranularity').addEventListener('change', function() {
+                activeFilters.timeGranularity = this.value;
+                updateProcessedData();
+                createHeatmap();
+            });
+
+            document.getElementById('genreCount').addEventListener('input', function() {
+                activeFilters.genreCount = parseInt(this.value);
+                document.getElementById('genreCountValue').textContent = this.value;
+                updateProcessedData();
+                createHeatmap();
+            });
+
+            document.getElementById('colorIntensity').addEventListener('input', function() {
+                activeFilters.colorIntensity = parseFloat(this.value);
+                document.getElementById('intensityValue').textContent = this.value;
+                updateColorScale();
+                createHeatmap();
+            });
+
+            document.getElementById('showTrends').addEventListener('change', function() {
+                activeFilters.showTrends = this.checked;
+                createHeatmap();
+            });
+
+            document.getElementById('normalizeData').addEventListener('change', function() {
+                activeFilters.normalizeData = this.checked;
+                updateProcessedData();
+                createHeatmap();
+            });
+
+            // Populate top genres
+            const topGenresDiv = document.getElementById('topGenres');
+            genreList.slice(0, 8).forEach(genre => {
+                const tag = document.createElement('div');
+                tag.className = 'genre-tag';
+                tag.textContent = genre;
+                tag.onclick = () => highlightGenre(genre);
+                topGenresDiv.appendChild(tag);
+            });
+        }
+
+        function toggleAnimation() {
+            const playBtn = document.getElementById('playBtn');
+            
+            if (isAnimating) {
+                // Stop animation
+                clearInterval(animationInterval);
+                isAnimating = false;
+                playBtn.textContent = '▶';
+                playBtn.style.background = 'linear-gradient(45deg, #ff6b6b, #ee5a24)';
+            } else {
+                // Start animation
+                isAnimating = true;
+                playBtn.textContent = '⏸';
+                playBtn.style.background = 'linear-gradient(45deg, #feca57, #ff9ff3)';
+                
+                let currentIdx = 0;
+                animationInterval = setInterval(() => {
+                    if (currentIdx >= processedData.timeBuckets.length) {
+                        currentIdx = 0;
+                    }
+                    
+                    currentAnimationYear = processedData.timeBuckets[currentIdx];
+                    document.getElementById('currentYear').textContent = currentAnimationYear;
+                    document.getElementById('timelineScrubber').value = 
+                        (currentIdx / (processedData.timeBuckets.length - 1)) * 100;
+                    
+                    createHeatmap();
+                    currentIdx++;
+                }, config.animationDuration);
+            }
+        }
+
+        function resetAnimation() {
+            clearInterval(animationInterval);
+            isAnimating = false;
+            currentAnimationYear = null;
+            document.getElementById('playBtn').textContent = '▶';
+            document.getElementById('playBtn').style.background = 'linear-gradient(45deg, #ff6b6b, #ee5a24)';
+            document.getElementById('currentYear').textContent = 'All Time';
+            document.getElementById('timelineScrubber').value = 100;
+            createHeatmap();
+        }
+
+        function highlightGenre(genre) {
+            // Highlight specific genre in heatmap
+            svg.selectAll('.heatmap-cell')
+                .style('opacity', d => d.genre === genre ? 1 : 0.2);
+            
+            // Update genre tags
+            document.querySelectorAll('.genre-tag').forEach(tag => {
+                tag.classList.toggle('active', tag.textContent === genre);
+            });
+        }
+
+        function updateStats() {
+            if (!processedData) return;
+
+            const totalGenres = processedData.genres.length;
+            
+            // Find peak year
+            const yearTotals = {};
+            processedData.matrix.forEach(row => {
+                row.forEach(cell => {
+                    yearTotals[cell.time] = (yearTotals[cell.time] || 0) + cell.value;
+                });
+            });
+            
+            const peakYear = Object.entries(yearTotals)
+                .sort((a, b) => b[1] - a[1])[0]?.[0] || 'Unknown';
+
+            // Find dominant genre
+            const genreTotals = {};
+            processedData.matrix.forEach((row, idx) => {
+                const total = d3.sum(row, cell => cell.value);
+                genreTotals[processedData.genres[idx]] = total;
+            });
+            
+            const dominantGenre = Object.entries(genreTotals)
+                .sort((a, b) => b[1] - a[1])[0]?.[0] || 'Unknown';
+
+            document.getElementById('totalGenres').textContent = totalGenres;
+            document.getElementById('peakYear').textContent = peakYear;
+            document.getElementById('dominantGenre').textContent = dominantGenre.length > 12 ? 
+                dominantGenre.substring(0, 12) + '...' : dominantGenre;
+        }
+
+        function exportData() {
+            const exportData = {
+                matrix: processedData.matrix,
+                genres: processedData.genres,
+                timeBuckets: processedData.timeBuckets,
+                filters: activeFilters,
+                timestamp: new Date().toISOString()
+            };
+
+            const blob = new Blob([JSON.stringify(exportData, null, 2)], 
+                { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'genre_timeline.json';
+            a.click();
+            
+            URL.revokeObjectURL(url);
+        }
+
+        function resetView() {
+            // Reset all filters
+            document.getElementById('viewMode').value = 'releases';
+            document.getElementById('timeGranularity').value = 'year';
+            document.getElementById('genreCount').value = '12';
+            document.getElementById('genreCountValue').textContent = '12';
+            document.getElementById('colorIntensity').value = '1';
+            document.getElementById('intensityValue').textContent = '1.0';
+            document.getElementById('showTrends').checked = false;
+            document.getElementById('normalizeData').checked = false;
+
+            activeFilters = {
+                viewMode: 'releases',
+                timeGranularity: 'year',
+                genreCount: 12,
+                colorIntensity: 1.0,
+                showTrends: false,
+                normalizeData: false
+            };
+
+            resetAnimation();
+            updateProcessedData();
+            createHeatmap();
+        }
+
+        // Handle window resize
+        window.addEventListener('resize', function() {
+            const container = document.getElementById('visualization');
+            config.width = container.clientWidth - config.margin.left - config.margin.right;
+            config.height = container.clientHeight - config.margin.top - config.margin.bottom;
+
+            svg.attr('width', config.width + config.margin.left + config.margin.right)
+               .attr('height', config.height + config.margin.top + config.margin.bottom);
+
+            createHeatmap();
+        });
+
+        // Initialize on load
+        window.addEventListener('load', init);
+    </script>
+</body>
+</html>

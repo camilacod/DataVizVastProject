@@ -1,0 +1,34 @@
+{
+  "edge_type_counts": {
+    "InterpolatesFrom": 1574,
+    "RecordedBy": 3798,
+    "PerformerOf": 13587,
+    "ComposerOf": 3290,
+    "ProducerOf": 3209,
+    "InStyleOf": 2289,
+    "LyricalReferenceTo": 1496,
+    "CoverOf": 1429,
+    "DistributedBy": 3013,
+    "MemberOf": 568,
+    "LyricistOf": 2985,
+    "DirectlySamples": 619
+  },
+  "creative_influences": [
+    "InStyleOf",
+    "InterpolatesFrom",
+    "CoverOf",
+    "LyricalReferenceTo",
+    "DirectlySamples"
+  ],
+  "professional_roles": [
+    "PerformerOf",
+    "ComposerOf",
+    "ProducerOf",
+    "LyricistOf"
+  ],
+  "business_relationships": [
+    "RecordedBy",
+    "DistributedBy"
+  ],
+  "total_creative_influences": 7407
+}
