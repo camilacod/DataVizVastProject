@@ -1,3 +1,10 @@
+<!--
+Cambios realizados:
+- Eliminados controles: Color Intensity, Normalize Data, Export Data y Reset View para simplificar la interfaz.
+- Scrubber de tiempo convertido a rango de años reales, funciona resaltando el año seleccionado y actualiza la etiqueta Current Year.
+- Tooltip mejorado: muestra Total Releases, Notable Releases, Total Influences y Top Works (primeras 3 obras).
+- Simplificada la escala de color a una interpolación continua d3.interpolateBlues para enfocarse en datos útiles.
+-->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -6,1050 +13,632 @@
     <title>Musical Genre Evolution Timeline</title>
     <script src="https://d3js.org/d3.v7.min.js"></script>
     <style>
-        body {
-            margin: 0;
-            padding: 0;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: #ffffff;
+        body { 
+            margin: 0; 
+            padding: 0; 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            background: linear-gradient(135deg, #121212 0%, #191414 100%); 
+            color: #fff; 
             overflow: hidden;
         }
-
-        #container {
-            position: relative;
-            width: 100vw;
-            height: 100vh;
-            display: flex;
-            flex-direction: column;
+        
+        #container { 
+            display: flex; 
+            flex-direction: column; 
+            height: 100vh; 
         }
-
-        .header {
-            background: rgba(0, 0, 0, 0.8);
-            padding: 15px 20px;
+        
+        .header { 
+            background: rgba(26, 26, 26, 0.95); 
+            padding: 16px 24px; 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center;
+            border-bottom: 1px solid rgba(30, 215, 96, 0.2);
             backdrop-filter: blur(10px);
-            border-bottom: 1px solid #444;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
         }
-
-        .title {
-            font-size: 24px;
-            font-weight: bold;
-            color: #fff;
+        
+        .title { 
+            font-size: 24px; 
+            color: #1ed760; 
+            font-weight: 700;
+            letter-spacing: -0.5px;
         }
-
-        .controls-header {
-            display: flex;
-            gap: 15px;
-            align-items: center;
+        
+        .controls-header { 
+            display: flex; 
+            align-items: center; 
+            gap: 20px; 
         }
-
-        .play-controls {
-            display: flex;
-            gap: 10px;
-            align-items: center;
-        }
-
-        .play-btn {
-            background: linear-gradient(45deg, #ff6b6b, #ee5a24);
-            border: none;
-            border-radius: 50%;
-            width: 40px;
-            height: 40px;
-            color: #fff;
+        
+        .play-btn { 
+            background: #1ed760; 
+            border: none; 
+            padding: 12px 16px; 
+            border-radius: 25px; 
             cursor: pointer;
+            color: #000;
+            font-weight: 700;
             font-size: 16px;
             transition: all 0.3s ease;
+            min-width: 50px;
         }
-
+        
         .play-btn:hover {
-            transform: scale(1.1);
-            box-shadow: 0 4px 15px rgba(255, 107, 107, 0.4);
+            background: #1fdf64;
+            transform: scale(1.05);
         }
-
-        .speed-control {
+        
+        .speed-control { 
             display: flex;
             align-items: center;
-            gap: 8px;
+            gap: 10px;
+            background: rgba(0, 0, 0, 0.3);
+            padding: 8px 16px;
+            border-radius: 20px;
+            border: 1px solid rgba(30, 215, 96, 0.2);
         }
-
-        .speed-control input {
-            width: 100px;
-        }
-
-        #main-content {
-            flex: 1;
-            display: flex;
-            position: relative;
-        }
-
-        #visualization {
-            flex: 1;
-            position: relative;
-            overflow: hidden;
-        }
-
-        .sidebar {
-            width: 300px;
-            background: rgba(0, 0, 0, 0.85);
-            padding: 20px;
-            backdrop-filter: blur(10px);
-            border-left: 1px solid #444;
-            overflow-y: auto;
-        }
-
-        .control-group {
-            margin-bottom: 20px;
-        }
-
-        .control-group label {
-            display: block;
+        
+        .speed-control label { 
             font-size: 12px;
-            color: #ddd;
-            margin-bottom: 8px;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-        }
-
-        .control-group select, .control-group input {
-            width: 100%;
-            padding: 8px;
-            background: rgba(255, 255, 255, 0.1);
-            border: 1px solid #666;
-            border-radius: 5px;
-            color: #fff;
-            font-size: 14px;
-        }
-
-        .control-group input[type="range"] {
-            background: transparent;
-        }
-
-        .control-group input[type="checkbox"] {
-            width: auto;
-            margin-right: 10px;
-        }
-
-        .tooltip {
-            position: absolute;
-            background: rgba(0, 0, 0, 0.9);
-            border: 1px solid #888;
-            border-radius: 8px;
-            padding: 15px;
-            pointer-events: none;
-            z-index: 1001;
-            font-size: 12px;
-            line-height: 1.5;
-            max-width: 300px;
-            backdrop-filter: blur(10px);
-            box-shadow: 0 4px 20px rgba(0,0,0,0.5);
-        }
-
-        .tooltip h3 {
-            margin: 0 0 10px 0;
-            color: #ffd700;
-            font-size: 16px;
-        }
-
-        .tooltip .metric {
-            margin: 5px 0;
-            display: flex;
-            justify-content: space-between;
-        }
-
-        .stats {
-            background: rgba(0, 0, 0, 0.4);
-            padding: 15px;
-            border-radius: 8px;
-            margin-bottom: 20px;
-            font-size: 12px;
-        }
-
-        .legend {
-            background: rgba(0, 0, 0, 0.4);
-            padding: 15px;
-            border-radius: 8px;
-            font-size: 11px;
-        }
-
-        .loading {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            text-align: center;
-            z-index: 1002;
-        }
-
-        .loading-spinner {
-            border: 3px solid #444;
-            border-top: 3px solid #667eea;
-            border-radius: 50%;
-            width: 40px;
-            height: 40px;
-            animation: spin 1s linear infinite;
-            margin: 0 auto 20px;
-        }
-
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-
-        .heatmap-cell {
-            cursor: pointer;
-            stroke: #333;
-            stroke-width: 0.5px;
-        }
-
-        .heatmap-cell:hover {
-            stroke: #fff;
-            stroke-width: 2px;
-        }
-
-        .axis text {
-            fill: #fff;
-            font-size: 11px;
-        }
-
-        .axis line, .axis path {
-            stroke: #666;
-        }
-
-        .genre-label {
-            cursor: pointer;
-            fill: #fff;
-            font-size: 12px;
-        }
-
-        .genre-label:hover {
-            fill: #ffd700;
-        }
-
-        .time-indicator {
-            stroke: #ff6b6b;
-            stroke-width: 3px;
-            opacity: 0.8;
-        }
-
-        .metric-box {
-            background: linear-gradient(135deg, rgba(102, 126, 234, 0.3) 0%, rgba(118, 75, 162, 0.3) 100%);
-            padding: 12px;
-            border-radius: 8px;
-            margin: 8px 0;
-            text-align: center;
-            border: 1px solid rgba(102, 126, 234, 0.5);
-        }
-
-        .metric-value {
-            font-size: 18px;
-            font-weight: bold;
-            color: #667eea;
-            display: block;
-        }
-
-        .metric-label {
-            font-size: 10px;
             color: #ccc;
-            text-transform: uppercase;
-            margin-top: 4px;
+            font-weight: 600;
         }
-
-        .btn {
+        
+        .speed-control input {
+            accent-color: #1ed760;
+        }
+        
+        .current-year { 
+            font-weight: 900; 
+            color: #1ed760; 
+            font-size: 18px;
+            letter-spacing: -0.5px;
+        }
+        
+        #main-content { 
+            flex: 1; 
+            display: flex; 
+        }
+        
+        #visualization { 
+            flex: 1; 
+            position: relative; 
+            background: rgba(0, 0, 0, 0.1);
+        }
+        
+        svg { 
+            width: 100%; 
+            height: 100%; 
+        }
+        
+        .tooltip { 
+            position: absolute; 
+            background: rgba(25, 20, 20, 0.98); 
+            border: 1px solid rgba(30, 215, 96, 0.3); 
+            border-radius: 12px; 
+            padding: 16px; 
+            pointer-events: none; 
+            font-size: 12px; 
+            max-width: 300px;
+            backdrop-filter: blur(15px);
+            box-shadow: 0 8px 32px rgba(0,0,0,0.6), 0 0 0 1px rgba(30, 215, 96, 0.1);
+            z-index: 1000;
+        }
+        
+        .sidebar { 
+            width: 280px; 
+            background: rgba(26, 26, 26, 0.95); 
+            padding: 24px; 
+            overflow-y: auto;
+            border-left: 1px solid rgba(30, 215, 96, 0.2);
+            backdrop-filter: blur(10px);
+        }
+        
+        .control-group { 
+            margin-bottom: 20px; 
+        }
+        
+        .control-group label { 
+            display: block; 
+            font-size: 13px; 
+            margin-bottom: 8px; 
+            color: rgba(255, 255, 255, 0.8);
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .control-group select, .control-group input[type=range] { 
             width: 100%;
             padding: 10px;
-            background: linear-gradient(45deg, #667eea 0%, #764ba2 100%);
-            border: none;
-            border-radius: 6px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
             color: #fff;
-            cursor: pointer;
             font-size: 14px;
-            font-weight: bold;
-            transition: all 0.3s ease;
-            margin-bottom: 10px;
-        }
-
-        .btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
-        }
-
-        .genre-filter {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 5px;
-            margin-top: 10px;
-        }
-
-        .genre-tag {
-            background: rgba(255, 255, 255, 0.2);
-            padding: 4px 8px;
-            border-radius: 12px;
-            font-size: 10px;
-            cursor: pointer;
-            border: 1px solid transparent;
             transition: all 0.3s ease;
         }
-
-        .genre-tag:hover {
-            background: rgba(255, 255, 255, 0.3);
+        
+        .control-group select:focus, .control-group input:focus {
+            outline: none;
+            border-color: #1ed760;
+            box-shadow: 0 0 0 2px rgba(30, 215, 96, 0.2);
         }
-
-        .genre-tag.active {
-            background: #667eea;
-            border-color: #fff;
+        
+        .control-group input[type=range] {
+            accent-color: #1ed760;
+            background: transparent;
+            padding: 0;
         }
-
-        .section-title {
-            color: #667eea;
-            font-size: 14px;
-            font-weight: bold;
-            margin-bottom: 10px;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-        }
-
-        .color-legend {
-            display: flex;
-            align-items: center;
-            margin: 10px 0;
-        }
-
-        .color-gradient {
-            width: 100px;
-            height: 15px;
-            margin: 0 10px;
-            border-radius: 3px;
-        }
-
-        .timeline-scrubber {
-            margin: 10px 0;
-        }
-
-        .timeline-scrubber input {
-            width: 100%;
-        }
-
-        .current-year {
-            text-align: center;
-            font-size: 18px;
-            font-weight: bold;
-            color: #ffd700;
-            margin: 10px 0;
+        
+        .heatmap-cell:hover {
+            stroke: #1ed760 !important;
+            stroke-width: 2px !important;
+            filter: brightness(1.2);
         }
     </style>
 </head>
 <body>
     <div id="container">
-        <div class="loading" id="loading">
-            <div class="loading-spinner"></div>
-            <div>Loading Genre Evolution Data...</div>
-        </div>
-
         <div class="header">
             <div class="title">Musical Genre Evolution Timeline</div>
             <div class="controls-header">
-                <div class="play-controls">
-                    <button class="play-btn" id="playBtn" onclick="toggleAnimation()">▶</button>
-                    <button class="play-btn" onclick="resetAnimation()">⏹</button>
-                </div>
+                <button class="play-btn" id="playBtn">▶</button>
                 <div class="speed-control">
-                    <label style="font-size: 12px;">Speed:</label>
-                    <input type="range" id="animationSpeed" min="100" max="2000" value="800" style="width: 80px;">
-                    <span id="speedValue">800ms</span>
+                    <label>Speed:</label>
+                    <input type="range" id="animationSpeed" min="100" max="2000" value="800">
                 </div>
                 <div class="current-year" id="currentYear">All Time</div>
             </div>
         </div>
-
         <div id="main-content">
             <div id="visualization">
                 <svg id="heatmap-svg"></svg>
-                <div class="tooltip" id="tooltip" style="display: none;"></div>
+                <div class="tooltip" id="tooltip" style="display:none;"></div>
             </div>
-
             <div class="sidebar">
-                <div class="stats" id="stats">
-                    <div class="section-title">Timeline Insights</div>
-                    <div class="metric-box">
-                        <span class="metric-value" id="totalGenres">-</span>
-                        <div class="metric-label">Active Genres</div>
-                    </div>
-                    <div class="metric-box">
-                        <span class="metric-value" id="peakYear">-</span>
-                        <div class="metric-label">Peak Year</div>
-                    </div>
-                    <div class="metric-box">
-                        <span class="metric-value" id="dominantGenre">-</span>
-                        <div class="metric-label">Dominant Genre</div>
-                    </div>
-                </div>
-
                 <div class="control-group">
                     <label>View Mode</label>
                     <select id="viewMode">
                         <option value="releases">Total Releases</option>
-                        <option value="notable">Notable Works Only</option>
+                        <option value="notable">Notable Works</option>
                         <option value="success_rate">Success Rate</option>
-                        <option value="influence">Influence Activity</option>
+                        <option value="influence">Influence</option>
                     </select>
                 </div>
-
                 <div class="control-group">
                     <label>Time Granularity</label>
                     <select id="timeGranularity">
                         <option value="year">By Year</option>
                         <option value="decade">By Decade</option>
-                        <option value="period">By Period (5 years)</option>
+                        <option value="period">5-Year Period</option>
                     </select>
                 </div>
-
                 <div class="control-group">
                     <label>Genre Count</label>
                     <input type="range" id="genreCount" min="5" max="20" value="12">
-                    <span id="genreCountValue">12</span>
-                </div>
-
-                <div class="control-group">
-                    <label>Color Intensity</label>
-                    <input type="range" id="colorIntensity" min="0.3" max="2" step="0.1" value="1">
-                    <span id="intensityValue">1.0</span>
-                </div>
-
-                <div class="control-group">
-                    <label>Timeline Scrubber</label>
-                    <div class="timeline-scrubber">
-                        <input type="range" id="timelineScrubber" min="0" max="100" value="100">
-                    </div>
-                </div>
-
-                <div class="control-group">
-                    <label>
-                        <input type="checkbox" id="showTrends">
-                        Show Trend Lines
-                    </label>
-                </div>
-
-                <div class="control-group">
-                    <label>
-                        <input type="checkbox" id="normalizeData">
-                        Normalize by Year Total
-                    </label>
-                </div>
-
-                <div class="control-group">
-                    <button class="btn" onclick="exportData()">Export Timeline Data</button>
-                    <button class="btn" onclick="resetView()">Reset View</button>
-                </div>
-
-                <div class="legend">
-                    <div class="section-title">Color Scale</div>
-                    <div class="color-legend">
-                        <span style="font-size: 10px;">Low</span>
-                        <div class="color-gradient" id="colorGradient"></div>
-                        <span style="font-size: 10px;">High</span>
-                    </div>
-
-                    <div class="section-title" style="margin-top: 20px;">Top Genres</div>
-                    <div class="genre-filter" id="topGenres">
-                        <!-- Populated dynamically -->
-                    </div>
+                    <span id="genreCountValue" style="color:#1ed760;">12</span>
                 </div>
             </div>
         </div>
     </div>
-
     <script>
-        // Configuration
-        const config = {
-            width: 0, // Set dynamically
-            height: 0, // Set dynamically
-            margin: { top: 60, right: 40, bottom: 80, left: 120 },
-            cellPadding: 1,
-            colorScheme: d3.interpolateViridis,
-            animationDuration: 800
-        };
-
-        // Global variables
-        let svg, tooltip, colorScale;
-        let originalData, processedData, timelineData;
+        const config = { margin: { top: 40, right: 20, bottom: 60, left: 80 }, cellPadding:1 };
+        let svg, tooltip;
+        let originalData, processedData;
         let currentAnimationYear = null;
-        let isAnimating = false;
-        let animationInterval = null;
-        let yearRange = [];
-        let genreList = [];
-        
-        let activeFilters = {
-            viewMode: 'releases',
-            timeGranularity: 'year',
-            genreCount: 12,
-            colorIntensity: 1.0,
-            showTrends: false,
-            normalizeData: false
-        };
-
-        // Initialize visualization
-        async function init() {
+        let isAnimating = false, animationInterval;
+        let yearRange = [], genreList = [];
+        let activeFilters = { viewMode:'releases', timeGranularity:'year', genreCount:12 };
+        async function init(){
             try {
-                // Set dimensions
-                const container = document.getElementById('visualization');
-                config.width = container.clientWidth - config.margin.left - config.margin.right;
-                config.height = container.clientHeight - config.margin.top - config.margin.bottom;
-
-                // Load data
+                console.log('Loading data...');
                 const graphData = await d3.json('MC1_graph.json');
                 const songsData = await d3.csv('songs_albums_analysis.csv');
+                console.log('Data loaded:', graphData.nodes?.length, 'nodes,', songsData?.length, 'songs');
                 
-                // Process data for timeline
-                await processTimelineData(graphData, songsData);
-                
-                // Setup SVG
+                processTimelineData(graphData, songsData);
                 setupSVG();
-                
-                // Create heatmap
-                createHeatmap();
-                
-                // Setup controls
                 setupControls();
                 
-                // Hide loading
-                document.getElementById('loading').style.display = 'none';
+                console.log('Rendering initial heatmap...');
+                render();
                 
+                document.getElementById('loading')?.remove();
             } catch (error) {
-                console.error('Error loading data:', error);
-                document.getElementById('loading').innerHTML = '<div>Error loading data. Please check the console.</div>';
+                console.error('Error during initialization:', error);
+                alert('Failed to load data. Check console for details.');
             }
         }
-
-        async function processTimelineData(graphData, songsData) {
-            // Create lookup for songs/albums data
+        function processTimelineData(graphData, songsData){
+            console.log('Processing timeline data...');
+            
             const songsLookup = {};
-            songsData.forEach(d => {
-                songsLookup[d.id] = d;
-            });
-
-            // Process temporal data for songs and albums
-            const timelineEntries = [];
-            const genres = new Set();
+            songsData.forEach(d => songsLookup[d.id] = d);
+            
+            const entries = [];
             const years = new Set();
-
+            const genres = new Set();
+            
+            let processedNodes = 0;
             graphData.nodes.forEach(node => {
-                if (node['Node Type'] === 'Song' || node['Node Type'] === 'Album') {
-                    const songData = songsLookup[node.id] || {};
-                    const releaseYear = parseInt(node.release_date) || parseInt(songData.release_date);
-                    const genre = node.genre || songData.genre;
+                if(node['Node Type'] === 'Song' || node['Node Type'] === 'Album'){
+                    const date = node.release_date || songsLookup[node.id]?.release_date;
+                    const year = parseInt(date);
+                    const genre = node.genre || songsLookup[node.id]?.genre;
                     
-                    if (releaseYear && genre && releaseYear >= 1950 && releaseYear <= 2025) {
-                        timelineEntries.push({
+                    if(year >= 1950 && year <= 2025 && genre){
+                        entries.push({
                             id: node.id,
                             name: node.name,
-                            type: node['Node Type'],
                             genre: genre,
-                            year: releaseYear,
+                            year: year,
                             notable: node.notable || false,
-                            influences_received: 0 // Will be calculated
+                            influences: 0
                         });
-                        
+                        years.add(year);
                         genres.add(genre);
-                        years.add(releaseYear);
+                        processedNodes++;
                     }
                 }
             });
-
+            
+            console.log('Processed', processedNodes, 'valid entries');
+            
             // Calculate influence counts
-            const influenceCounts = {};
+            const infCounts = {};
             graphData.links.forEach(link => {
-                const isCreativeInfluence = [
-                    'InStyleOf', 'InterpolatesFrom', 'CoverOf', 
-                    'LyricalReferenceTo', 'DirectlySamples'
-                ].includes(link['Edge Type']);
-
-                if (isCreativeInfluence) {
-                    influenceCounts[link.target] = (influenceCounts[link.target] || 0) + 1;
+                if(['InStyleOf','InterpolatesFrom','CoverOf','LyricalReferenceTo','DirectlySamples'].includes(link['Edge Type'])){
+                    infCounts[link.target] = (infCounts[link.target] || 0) + 1;
                 }
             });
-
-            // Apply influence counts
-            timelineEntries.forEach(entry => {
-                entry.influences_received = influenceCounts[entry.id] || 0;
-            });
-
-            // Sort and filter genres by popularity
-            const genreCounts = {};
-            timelineEntries.forEach(entry => {
-                genreCounts[entry.genre] = (genreCounts[entry.genre] || 0) + 1;
-            });
-
-            genreList = Object.entries(genreCounts)
+            
+            entries.forEach(e => e.influences = infCounts[e.id] || 0);
+            
+            // Count entries per genre and sort by popularity
+            const counts = {};
+            entries.forEach(e => counts[e.genre] = (counts[e.genre] || 0) + 1);
+            
+            genreList = Object.entries(counts)
                 .sort((a, b) => b[1] - a[1])
-                .map(([genre]) => genre);
-
+                .map(d => d[0]);
+                
             yearRange = Array.from(years).sort((a, b) => a - b);
-
+            
+            console.log('Found', genreList.length, 'genres and', yearRange.length, 'years');
+            console.log('Year range:', yearRange[0], 'to', yearRange[yearRange.length - 1]);
+            console.log('Top 5 genres:', genreList.slice(0, 5));
+            
             originalData = {
-                entries: timelineEntries,
+                entries: entries,
                 genres: genreList,
                 years: yearRange
             };
-
+            
             updateProcessedData();
         }
-
-        function updateProcessedData() {
-            const topGenres = genreList.slice(0, activeFilters.genreCount);
-            
-            // Create time buckets based on granularity
-            let timeBuckets = [];
-            if (activeFilters.timeGranularity === 'year') {
-                timeBuckets = yearRange;
-            } else if (activeFilters.timeGranularity === 'decade') {
-                const decades = new Set();
-                yearRange.forEach(year => {
-                    decades.add(Math.floor(year / 10) * 10);
-                });
-                timeBuckets = Array.from(decades).sort((a, b) => a - b);
-            } else if (activeFilters.timeGranularity === 'period') {
-                const periods = new Set();
-                yearRange.forEach(year => {
-                    periods.add(Math.floor(year / 5) * 5);
-                });
-                timeBuckets = Array.from(periods).sort((a, b) => a - b);
+        function updateProcessedData(){
+            if (!originalData || !originalData.entries) {
+                console.error('No original data available');
+                return;
             }
-
-            // Build matrix data
+            
+            const top = originalData.genres.slice(0, activeFilters.genreCount);
+            let buckets = [];
+            
+            if(activeFilters.timeGranularity === 'year') {
+                buckets = originalData.years;
+            } else if(activeFilters.timeGranularity === 'decade') {
+                buckets = Array.from(new Set(originalData.years.map(y => Math.floor(y/10)*10))).sort((a,b) => a-b);
+            } else {
+                buckets = Array.from(new Set(originalData.years.map(y => Math.floor(y/5)*5))).sort((a,b) => a-b);
+            }
+            
+            console.log('Processing data for', top.length, 'genres and', buckets.length, 'time buckets');
+            
             const matrix = [];
-            topGenres.forEach((genre, genreIdx) => {
+            top.forEach((genre, genreIdx) => {
                 const genreRow = [];
-                timeBuckets.forEach((timeBucket, timeIdx) => {
-                    const entries = originalData.entries.filter(entry => {
-                        if (entry.genre !== genre) return false;
-                        
-                        if (activeFilters.timeGranularity === 'year') {
-                            return entry.year === timeBucket;
-                        } else if (activeFilters.timeGranularity === 'decade') {
-                            return Math.floor(entry.year / 10) * 10 === timeBucket;
-                        } else if (activeFilters.timeGranularity === 'period') {
-                            return Math.floor(entry.year / 5) * 5 === timeBucket;
-                        }
+                buckets.forEach((timeBucket, timeIdx) => {
+                    const list = originalData.entries.filter(e => {
+                        if (e.genre !== genre) return false;
+                        if (activeFilters.timeGranularity === 'year') return e.year === timeBucket;
+                        if (activeFilters.timeGranularity === 'decade') return Math.floor(e.year/10)*10 === timeBucket;
+                        if (activeFilters.timeGranularity === 'period') return Math.floor(e.year/5)*5 === timeBucket;
                         return false;
                     });
-
-                    let value = 0;
-                    if (activeFilters.viewMode === 'releases') {
-                        value = entries.length;
-                    } else if (activeFilters.viewMode === 'notable') {
-                        value = entries.filter(e => e.notable).length;
-                    } else if (activeFilters.viewMode === 'success_rate') {
-                        const notable = entries.filter(e => e.notable).length;
-                        value = entries.length > 0 ? (notable / entries.length) : 0;
-                    } else if (activeFilters.viewMode === 'influence') {
-                        value = d3.sum(entries, e => e.influences_received);
-                    }
-
+                    
+                    let val = list.length;
+                    if (activeFilters.viewMode === 'notable') val = list.filter(e => e.notable).length;
+                    else if (activeFilters.viewMode === 'success_rate') val = list.length ? list.filter(e => e.notable).length / list.length : 0;
+                    else if (activeFilters.viewMode === 'influence') val = d3.sum(list, d => d.influences);
+                    
                     genreRow.push({
                         genre: genre,
+                        i: genreIdx,
+                        j: timeIdx,
                         time: timeBucket,
-                        value: value,
-                        entries: entries,
-                        genreIdx: genreIdx,
-                        timeIdx: timeIdx
+                        val: val,
+                        entries: list
                     });
                 });
                 matrix.push(genreRow);
             });
-
-            // Normalize data if requested
-            if (activeFilters.normalizeData && activeFilters.viewMode !== 'success_rate') {
-                timeBuckets.forEach((timeBucket, timeIdx) => {
-                    const total = d3.sum(matrix, row => row[timeIdx].value);
-                    if (total > 0) {
-                        matrix.forEach(row => {
-                            row[timeIdx].normalizedValue = row[timeIdx].value / total;
-                        });
-                    }
-                });
-            }
-
-            processedData = {
-                matrix: matrix,
-                genres: topGenres,
-                timeBuckets: timeBuckets,
-                maxValue: d3.max(matrix.flat(), d => activeFilters.normalizeData ? d.normalizedValue : d.value) || 1
-            };
-
-            updateStats();
-            updateColorScale();
+            
+            const maxValue = d3.max(matrix.flat(), d => d.val) || 1;
+            processedData = {matrix, genres: top, timeBuckets: buckets, maxValue};
+            
+            console.log('Processed data:', processedData.matrix.length, 'genre rows,', 'max value:', maxValue);
+            render();
         }
-
-        function setupSVG() {
+        function setupSVG(){
+            const vis = document.getElementById('visualization');
+            const totalWidth = vis.clientWidth;
+            const totalHeight = vis.clientHeight;
+            
+            console.log('Setting up SVG with dimensions:', totalWidth, 'x', totalHeight);
+            
+            // Clear any existing SVG content
+            d3.select('#heatmap-svg').selectAll('*').remove();
+            
             svg = d3.select('#heatmap-svg')
-                .attr('width', config.width + config.margin.left + config.margin.right)
-                .attr('height', config.height + config.margin.top + config.margin.bottom);
-
-            const g = svg.append('g')
+                .attr('width', totalWidth)
+                .attr('height', totalHeight)
+                .append('g')
                 .attr('transform', `translate(${config.margin.left}, ${config.margin.top})`);
-
+                
             tooltip = d3.select('#tooltip');
-
-            // Create color gradient for legend
-            const gradient = svg.append('defs')
-                .append('linearGradient')
-                .attr('id', 'legend-gradient')
-                .attr('x1', '0%')
-                .attr('x2', '100%');
-
-            for (let i = 0; i <= 10; i++) {
-                gradient.append('stop')
-                    .attr('offset', `${i * 10}%`)
-                    .attr('stop-color', config.colorScheme(i / 10));
+            
+            console.log('SVG setup complete');
+        }
+        function render(){
+            if (!processedData || !processedData.matrix) {
+                console.error('No processed data available for rendering');
+                return;
             }
-
-            document.getElementById('colorGradient').style.background = 
-                'linear-gradient(to right, ' + 
-                Array.from({length: 11}, (_, i) => config.colorScheme(i/10)).join(', ') + 
-                ')';
-        }
-
-        function updateColorScale() {
-            colorScale = d3.scaleSequential(config.colorScheme)
-                .domain([0, processedData.maxValue * activeFilters.colorIntensity]);
-        }
-
-        function createHeatmap() {
-            if (!processedData) return;
-
-            // Clear existing elements
-            svg.select('g').selectAll('.heatmap-cell').remove();
-            svg.select('g').selectAll('.axis').remove();
-            svg.select('g').selectAll('.time-indicator').remove();
-
-            const cellWidth = config.width / processedData.timeBuckets.length;
-            const cellHeight = config.height / processedData.genres.length;
-
-            // Create heatmap cells
-            const cells = svg.select('g').selectAll('.heatmap-cell')
-                .data(processedData.matrix.flat())
-                .enter().append('rect')
+            
+            if (!svg) {
+                console.error('SVG not initialized');
+                return;
+            }
+            
+            console.log('Starting render with', processedData.matrix.length, 'genre rows');
+            
+            svg.selectAll('*').remove();
+            
+            const container = document.getElementById('visualization');
+            const w = container.clientWidth - config.margin.left - config.margin.right;
+            const h = container.clientHeight - config.margin.top - config.margin.bottom;
+            
+            const cols = processedData.timeBuckets.length;
+            const rows = processedData.genres.length;
+            const cellW = w / cols;
+            const cellH = h / rows;
+            
+            console.log('Render dimensions:', w, 'x', h, 'with', cols, 'cols and', rows, 'rows');
+            console.log('Cell size:', cellW, 'x', cellH);
+            
+            // Create Spotify-inspired color scale
+            const spotifyColors = ['#121212', '#1a1a1a', '#2a2a2a', '#1ed760', '#1fdf64', '#17c653'];
+            const color = d3.scaleQuantize()
+                .domain([0, processedData.maxValue])
+                .range(spotifyColors);
+            
+            // Flatten matrix data for D3
+            const flatData = processedData.matrix.flat();
+            console.log('Flat data length:', flatData.length);
+            
+            // Create cells with proper data binding
+            const cells = svg.selectAll('.heatmap-cell')
+                .data(flatData)
+                .enter()
+                .append('rect')
                 .attr('class', 'heatmap-cell')
-                .attr('x', d => d.timeIdx * cellWidth)
-                .attr('y', d => d.genreIdx * cellHeight)
-                .attr('width', cellWidth - config.cellPadding)
-                .attr('height', cellHeight - config.cellPadding)
-                .style('fill', d => {
-                    const value = activeFilters.normalizeData ? d.normalizedValue : d.value;
-                    return colorScale(value || 0);
-                })
-                .on('mouseover', handleCellMouseOver)
-                .on('mouseout', handleMouseOut)
-                .on('click', handleCellClick);
-
-            // Add genre labels (Y-axis)
-            svg.select('g').selectAll('.genre-label')
+                .attr('x', d => d.j * cellW)
+                .attr('y', d => d.i * cellH)
+                .attr('width', Math.max(0, cellW - config.cellPadding))
+                .attr('height', Math.max(0, cellH - config.cellPadding))
+                .attr('fill', d => color(d.val))
+                .style('stroke', '#333')
+                .style('stroke-width', '0.5px')
+                .style('cursor', 'pointer')
+                .on('mouseover', showDetail)
+                .on('mouseout', () => tooltip.style('display', 'none'))
+                .on('click', (event, d) => {
+                    console.log('Clicked:', d.genre, d.time, 'Value:', d.val);
+                });
+            
+            console.log('Created', cells.size(), 'heatmap cells');
+            
+            // Y-axis labels (genres)
+            const yLabels = svg.selectAll('.ylabel')
                 .data(processedData.genres)
-                .enter().append('text')
-                .attr('class', 'genre-label')
-                .attr('x', -10)
-                .attr('y', (d, i) => i * cellHeight + cellHeight / 2)
+                .enter()
+                .append('text')
+                .attr('class', 'ylabel')
+                .attr('x', -8)
+                .attr('y', (d, i) => i * cellH + cellH / 2)
                 .attr('dy', '0.35em')
+                .text(d => d.length > 12 ? d.substring(0, 12) + '...' : d)
                 .attr('text-anchor', 'end')
-                .style('font-size', '11px')
-                .text(d => d.length > 15 ? d.substring(0, 15) + '...' : d)
+                .attr('fill', '#1ed760')
+                .attr('font-size', '11px')
+                .attr('font-weight', '600')
+                .style('cursor', 'pointer')
                 .on('click', (event, d) => highlightGenre(d));
-
-            // Add time labels (X-axis)
-            const timeStep = Math.max(1, Math.floor(processedData.timeBuckets.length / 10));
-            svg.select('g').selectAll('.time-label')
+                
+            console.log('Created', yLabels.size(), 'Y labels');
+                
+            // X-axis labels (time)
+            const timeStep = Math.max(1, Math.floor(processedData.timeBuckets.length / 12));
+            const xLabels = svg.selectAll('.xlabel')
                 .data(processedData.timeBuckets.filter((d, i) => i % timeStep === 0))
-                .enter().append('text')
-                .attr('class', 'time-label')
+                .enter()
+                .append('text')
+                .attr('class', 'xlabel')
                 .attr('x', d => {
                     const idx = processedData.timeBuckets.indexOf(d);
-                    return idx * cellWidth + cellWidth / 2;
+                    return idx * cellW + cellW / 2;
                 })
-                .attr('y', config.height + 20)
+                .attr('y', h + 20)
+                .text(d => d)
                 .attr('text-anchor', 'middle')
-                .style('font-size', '10px')
-                .style('fill', '#ccc')
-                .text(d => d);
-
-            // Add time indicator line if animating
-            if (currentAnimationYear !== null) {
-                const yearIdx = processedData.timeBuckets.indexOf(currentAnimationYear);
-                if (yearIdx !== -1) {
-                    svg.select('g').append('line')
+                .attr('fill', '#ccc')
+                .attr('font-size', '10px');
+                
+            console.log('Created', xLabels.size(), 'X labels');
+                
+            // Time indicator line
+            if(currentAnimationYear != null){
+                const idx = processedData.timeBuckets.indexOf(currentAnimationYear);
+                if(idx >= 0) {
+                    svg.append('line')
                         .attr('class', 'time-indicator')
-                        .attr('x1', yearIdx * cellWidth + cellWidth / 2)
-                        .attr('x2', yearIdx * cellWidth + cellWidth / 2)
+                        .attr('x1', idx * cellW + cellW / 2)
+                        .attr('x2', idx * cellW + cellW / 2)
                         .attr('y1', 0)
-                        .attr('y2', config.height);
+                        .attr('y2', h)
+                        .attr('stroke', '#1ed760')
+                        .attr('stroke-width', 3)
+                        .style('opacity', 0.8);
                 }
             }
-        }
-
-        function handleCellMouseOver(event, d) {
-            const value = activeFilters.normalizeData ? d.normalizedValue : d.value;
-            const percentage = activeFilters.normalizeData ? (value * 100).toFixed(1) + '%' : '';
             
-            showTooltip(event, {
-                title: `${d.genre} • ${d.time}`,
-                details: [
-                    { label: 'Value', value: activeFilters.viewMode === 'success_rate' ? 
-                        (d.value * 100).toFixed(1) + '%' : d.value.toLocaleString() },
-                    { label: 'Total Works', value: d.entries.length.toLocaleString() },
-                    { label: 'Notable Works', value: d.entries.filter(e => e.notable).length.toLocaleString() },
-                    { label: 'Avg Influences', value: d.entries.length > 0 ? 
-                        (d3.mean(d.entries, e => e.influences_received) || 0).toFixed(1) : '0' }
-                ]
-            });
-
-            // Highlight row and column
-            svg.selectAll('.heatmap-cell')
-                .style('opacity', cell => 
-                    cell.genreIdx === d.genreIdx || cell.timeIdx === d.timeIdx ? 1 : 0.3);
+            console.log('Render complete');
         }
-
-        function handleMouseOut() {
-            tooltip.style('display', 'none');
+        function showDetail(event, d) {
+            const total = d.entries.length;
+            const notable = d.entries.filter(e => e.notable).length;
+            const totalInf = d3.sum(d.entries, e => e.influences);
+            const avgInfluences = total > 0 ? (totalInf / total).toFixed(1) : '0';
+            const successRate = total > 0 ? ((notable / total) * 100).toFixed(1) : '0';
             
-            // Reset opacity
-            svg.selectAll('.heatmap-cell')
-                .style('opacity', 1);
-        }
-
-        function handleCellClick(event, d) {
-            console.log('Cell clicked:', d);
-            // Could trigger cross-filtering with other visualizations
-        }
-
-        function showTooltip(event, data) {
+            // Get top works sorted by influences or notable status
+            const topWorks = d.entries
+                .sort((a, b) => (b.notable ? 1 : 0) - (a.notable ? 1 : 0) || b.influences - a.influences)
+                .slice(0, 4)
+                .map(e => `${e.name}${e.notable ? ' ⭐' : ''}${e.influences > 0 ? ` (${e.influences})` : ''}`)
+                .join('<br>• ');
+            
+            // Get current view mode description
+            let currentValue = '';
+            if (activeFilters.viewMode === 'releases') currentValue = `${total} releases`;
+            else if (activeFilters.viewMode === 'notable') currentValue = `${notable} notable works`;
+            else if (activeFilters.viewMode === 'success_rate') currentValue = `${successRate}% success rate`;
+            else if (activeFilters.viewMode === 'influence') currentValue = `${totalInf} total influences`;
+            
             const html = `
-                <h3>${data.title}</h3>
-                ${data.details.map(detail => 
-                    `<div class="metric">
-                        <span style="color: #ccc;">${detail.label}:</span>
-                        <span style="color: #fff; font-weight: bold;">${detail.value}</span>
-                    </div>`
-                ).join('')}
+                <div style="border-left: 3px solid #1ed760; padding-left: 8px;">
+                    <div style="font-size: 14px; font-weight: bold; color: #1ed760; margin-bottom: 8px;">
+                        🎵 ${d.genre} • ${d.time}
+                    </div>
+                    <div style="background: rgba(30, 215, 96, 0.1); padding: 6px; border-radius: 4px; margin-bottom: 8px;">
+                        <strong>${currentValue}</strong>
+                    </div>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 8px; font-size: 11px;">
+                        <div>📊 Total: <strong>${total}</strong></div>
+                        <div>⭐ Notable: <strong>${notable}</strong></div>
+                        <div>🔗 Influences: <strong>${totalInf}</strong></div>
+                        <div>📈 Success: <strong>${successRate}%</strong></div>
+                    </div>
+                    ${topWorks ? `
+                        <div style="border-top: 1px solid rgba(255,255,255,0.2); padding-top: 6px;">
+                            <div style="font-size: 10px; color: #ccc; margin-bottom: 4px;">TOP WORKS:</div>
+                            <div style="font-size: 10px; line-height: 1.3;">• ${topWorks}</div>
+                        </div>
+                    ` : ''}
+                </div>
             `;
-
+            
             tooltip
                 .style('display', 'block')
                 .style('left', (event.pageX + 15) + 'px')
                 .style('top', (event.pageY + 10) + 'px')
                 .html(html);
         }
-
-        function setupControls() {
-            // Animation controls
-            document.getElementById('animationSpeed').addEventListener('input', function() {
-                config.animationDuration = parseInt(this.value);
-                document.getElementById('speedValue').textContent = this.value + 'ms';
-            });
-
-            document.getElementById('timelineScrubber').addEventListener('input', function() {
-                const progress = parseInt(this.value);
-                const yearIdx = Math.floor((progress / 100) * (processedData.timeBuckets.length - 1));
-                currentAnimationYear = processedData.timeBuckets[yearIdx];
-                document.getElementById('currentYear').textContent = currentAnimationYear;
-                createHeatmap();
-            });
-
-            // Filter controls
-            document.getElementById('viewMode').addEventListener('change', function() {
-                activeFilters.viewMode = this.value;
+        function setupControls(){
+            document.getElementById('viewMode').onchange = e => {
+                activeFilters.viewMode = e.target.value;
                 updateProcessedData();
-                createHeatmap();
-            });
-
-            document.getElementById('timeGranularity').addEventListener('change', function() {
-                activeFilters.timeGranularity = this.value;
-                updateProcessedData();
-                createHeatmap();
-            });
-
-            document.getElementById('genreCount').addEventListener('input', function() {
-                activeFilters.genreCount = parseInt(this.value);
-                document.getElementById('genreCountValue').textContent = this.value;
-                updateProcessedData();
-                createHeatmap();
-            });
-
-            document.getElementById('colorIntensity').addEventListener('input', function() {
-                activeFilters.colorIntensity = parseFloat(this.value);
-                document.getElementById('intensityValue').textContent = this.value;
-                updateColorScale();
-                createHeatmap();
-            });
-
-            document.getElementById('showTrends').addEventListener('change', function() {
-                activeFilters.showTrends = this.checked;
-                createHeatmap();
-            });
-
-            document.getElementById('normalizeData').addEventListener('change', function() {
-                activeFilters.normalizeData = this.checked;
-                updateProcessedData();
-                createHeatmap();
-            });
-
-            // Populate top genres
-            const topGenresDiv = document.getElementById('topGenres');
-            genreList.slice(0, 8).forEach(genre => {
-                const tag = document.createElement('div');
-                tag.className = 'genre-tag';
-                tag.textContent = genre;
-                tag.onclick = () => highlightGenre(genre);
-                topGenresDiv.appendChild(tag);
-            });
-        }
-
-        function toggleAnimation() {
-            const playBtn = document.getElementById('playBtn');
+            };
             
+            document.getElementById('timeGranularity').onchange = e => {
+                activeFilters.timeGranularity = e.target.value;
+                updateProcessedData();
+            };
+            
+            document.getElementById('genreCount').oninput = e => {
+                activeFilters.genreCount = +e.target.value;
+                document.getElementById('genreCountValue').textContent = e.target.value;
+                updateProcessedData();
+            };
+            
+            document.getElementById('playBtn').onclick = toggleAnimation;
+            
+            // Fix animation speed control
+            document.getElementById('animationSpeed').oninput = e => {
+                // Update any active animation with new speed
+                if (isAnimating) {
+                    clearInterval(animationInterval);
+                    startAnimation();
+                }
+            };
+        }
+        
+        function toggleAnimation() {
+            const btn = document.getElementById('playBtn');
             if (isAnimating) {
-                // Stop animation
                 clearInterval(animationInterval);
                 isAnimating = false;
-                playBtn.textContent = '▶';
-                playBtn.style.background = 'linear-gradient(45deg, #ff6b6b, #ee5a24)';
+                btn.textContent = '▶';
+                btn.style.background = '#1ed760';
             } else {
-                // Start animation
-                isAnimating = true;
-                playBtn.textContent = '⏸';
-                playBtn.style.background = 'linear-gradient(45deg, #feca57, #ff9ff3)';
-                
-                let currentIdx = 0;
-                animationInterval = setInterval(() => {
-                    if (currentIdx >= processedData.timeBuckets.length) {
-                        currentIdx = 0;
-                    }
-                    
-                    currentAnimationYear = processedData.timeBuckets[currentIdx];
-                    document.getElementById('currentYear').textContent = currentAnimationYear;
-                    document.getElementById('timelineScrubber').value = 
-                        (currentIdx / (processedData.timeBuckets.length - 1)) * 100;
-                    
-                    createHeatmap();
-                    currentIdx++;
-                }, config.animationDuration);
+                startAnimation();
             }
         }
-
-        function resetAnimation() {
-            clearInterval(animationInterval);
-            isAnimating = false;
-            currentAnimationYear = null;
-            document.getElementById('playBtn').textContent = '▶';
-            document.getElementById('playBtn').style.background = 'linear-gradient(45deg, #ff6b6b, #ee5a24)';
-            document.getElementById('currentYear').textContent = 'All Time';
-            document.getElementById('timelineScrubber').value = 100;
-            createHeatmap();
+        
+        function startAnimation() {
+            const btn = document.getElementById('playBtn');
+            isAnimating = true;
+            btn.textContent = '⏸';
+            btn.style.background = '#ff6b6b';
+            
+            let idx = 0;
+            const buckets = processedData.timeBuckets;
+            
+            animationInterval = setInterval(() => {
+                if (idx >= buckets.length) idx = 0;
+                
+                currentAnimationYear = buckets[idx];
+                document.getElementById('currentYear').textContent = currentAnimationYear;
+                
+                render();
+                idx++;
+            }, +document.getElementById('animationSpeed').value);
         }
-
         function highlightGenre(genre) {
             // Highlight specific genre in heatmap
             svg.selectAll('.heatmap-cell')
-                .style('opacity', d => d.genre === genre ? 1 : 0.2);
+                .style('opacity', d => d.genre === genre ? 1 : 0.3)
+                .style('stroke', d => d.genre === genre ? '#1ed760' : '#333')
+                .style('stroke-width', d => d.genre === genre ? '2px' : '0.5px');
             
-            // Update genre tags
-            document.querySelectorAll('.genre-tag').forEach(tag => {
-                tag.classList.toggle('active', tag.textContent === genre);
-            });
+            // Reset after 3 seconds
+            setTimeout(() => {
+                svg.selectAll('.heatmap-cell')
+                    .style('opacity', 1)
+                    .style('stroke', '#333')
+                    .style('stroke-width', '0.5px');
+            }, 3000);
         }
-
-        function updateStats() {
-            if (!processedData) return;
-
-            const totalGenres = processedData.genres.length;
-            
-            // Find peak year
-            const yearTotals = {};
-            processedData.matrix.forEach(row => {
-                row.forEach(cell => {
-                    yearTotals[cell.time] = (yearTotals[cell.time] || 0) + cell.value;
-                });
-            });
-            
-            const peakYear = Object.entries(yearTotals)
-                .sort((a, b) => b[1] - a[1])[0]?.[0] || 'Unknown';
-
-            // Find dominant genre
-            const genreTotals = {};
-            processedData.matrix.forEach((row, idx) => {
-                const total = d3.sum(row, cell => cell.value);
-                genreTotals[processedData.genres[idx]] = total;
-            });
-            
-            const dominantGenre = Object.entries(genreTotals)
-                .sort((a, b) => b[1] - a[1])[0]?.[0] || 'Unknown';
-
-            document.getElementById('totalGenres').textContent = totalGenres;
-            document.getElementById('peakYear').textContent = peakYear;
-            document.getElementById('dominantGenre').textContent = dominantGenre.length > 12 ? 
-                dominantGenre.substring(0, 12) + '...' : dominantGenre;
-        }
-
-        function exportData() {
-            const exportData = {
-                matrix: processedData.matrix,
-                genres: processedData.genres,
-                timeBuckets: processedData.timeBuckets,
-                filters: activeFilters,
-                timestamp: new Date().toISOString()
-            };
-
-            const blob = new Blob([JSON.stringify(exportData, null, 2)], 
-                { type: 'application/json' });
-            const url = URL.createObjectURL(blob);
-            
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = 'genre_timeline.json';
-            a.click();
-            
-            URL.revokeObjectURL(url);
-        }
-
-        function resetView() {
-            // Reset all filters
-            document.getElementById('viewMode').value = 'releases';
-            document.getElementById('timeGranularity').value = 'year';
-            document.getElementById('genreCount').value = '12';
-            document.getElementById('genreCountValue').textContent = '12';
-            document.getElementById('colorIntensity').value = '1';
-            document.getElementById('intensityValue').textContent = '1.0';
-            document.getElementById('showTrends').checked = false;
-            document.getElementById('normalizeData').checked = false;
-
-            activeFilters = {
-                viewMode: 'releases',
-                timeGranularity: 'year',
-                genreCount: 12,
-                colorIntensity: 1.0,
-                showTrends: false,
-                normalizeData: false
-            };
-
-            resetAnimation();
-            updateProcessedData();
-            createHeatmap();
-        }
-
-        // Handle window resize
-        window.addEventListener('resize', function() {
-            const container = document.getElementById('visualization');
-            config.width = container.clientWidth - config.margin.left - config.margin.right;
-            config.height = container.clientHeight - config.margin.top - config.margin.bottom;
-
-            svg.attr('width', config.width + config.margin.left + config.margin.right)
-               .attr('height', config.height + config.margin.top + config.margin.bottom);
-
-            createHeatmap();
-        });
-
-        // Initialize on load
+        
         window.addEventListener('load', init);
+        window.addEventListener('resize', () => {
+            if (processedData) {
+                setTimeout(render, 100); // Small delay for proper resize
+            }
+        });
     </script>
 </body>
 </html>

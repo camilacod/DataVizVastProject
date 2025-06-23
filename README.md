@@ -59,10 +59,34 @@ Interactive features: hover tooltips, click‑to‑filter, animated transitions.
 
 ---
 
+## Visualizations
 
+### Timeline Heatmap (`timeline_heatmap.html`)
 
+An interactive timeline heatmap visualization that explores musical genre evolution over time, featuring a Spotify-inspired design aesthetic.
 
+#### Features
 
+**Data Representation**
+- **Heatmap Matrix**: Genres (Y-axis) × Time periods (X-axis)
+- **Color Encoding**: Activity intensity using Spotify-themed green color scale
+- **Time Granularity**: View by year, decade, or 5-year periods
+- **Multiple Metrics**: Total releases, notable works, success rate, or influence activity
 
+**Interactive Controls**
+- **View Modes**: 
+  - Total Releases: Shows all musical works released
+  - Notable Works: Filters to only chart-successful pieces
+  - Success Rate: Percentage of works that became notable
+  - Influence Activity: Sum of creative influences (samples, covers, etc.)
+- **Animation**: Automated timeline playback with speed control
+- **Genre Selection**: Adjustable number of top genres to display (5-20)
+- **Click Interactions**: Click genre labels to highlight specific genres
 
+**Rich Tooltips**
+Hover over any cell to see:
+- Genre and time period information
+- Current metric value with context
+- Comprehensive statistics (total works, notable works, influences, success rate)
+- Top works in that genre/period with influence indicators
 
