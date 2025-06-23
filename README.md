@@ -90,3 +90,35 @@ Hover over any cell to see:
 - Comprehensive statistics (total works, notable works, influences, success rate)
 - Top works in that genre/period with influence indicators
 
+### Collaboration Chord Diagram (`collaboration_chord.html`)
+
+An interactive chord diagram visualization showcasing artist-producer-label collaboration triads within the musical influence network, featuring Spotify-inspired aesthetics and comprehensive filtering capabilities.
+
+#### Features
+
+**Data Representation**
+- **Chord Layout**: D3's chord diagram displaying collaboration matrices between entities
+- **Arc Size Encoding**: Entity arc size represents total number of works produced
+- **Color Encoding**: Genre-based color scheme using Spotify green variations
+- **Entity Types**: Artists/People, Producers, and Record Labels with distinct visual styling
+- **Matrix Analysis**: Top 20 entities by work count to ensure readability
+
+**Interactive Controls**
+- **Genre Filtering**: Focus on specific genres while preserving collaboration context
+- **Collaboration Strength**: Filter by strong (5+ works), medium (2-4 works), or weak (1 work) collaborations
+- **Work Count Slider**: Adjustable minimum works threshold (1-10)
+- **Opacity Control**: Customize chord ribbon transparency for better visibility
+- **Label Toggle**: Show/hide entity names around the diagram
+- **Notable Works Filter**: Focus on entities involved in chart-successful works
+
+**Rich Interactions**
+- **Entity Tooltips**: Hover over arcs to see role, genre, work count, collaboration details, and notable status
+- **Collaboration Tooltips**: Hover over ribbons to see detailed collaboration information between entities
+- **Genre Tags**: Quick-filter buttons for top genres in the sidebar legend
+- **Visual Highlighting**: Chord ribbons highlight on hover with stroke effects
+
+**Live Statistics**
+- **Active Triads**: Current number of entities displayed
+- **Total Works**: Aggregate work count across filtered entities  
+- **Dominant Genre**: Most prominent genre by work volume in current view
+
