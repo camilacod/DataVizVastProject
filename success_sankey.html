@@ -653,6 +653,315 @@
                         }
                     }
                 });
+
+            } else if (activeFilters.pathwayFocus === 'genre') {
+                // Create pathway: Genres → Time Periods → Success Levels
+                
+                // Add genre nodes
+                const genres = [...new Set(nodes.map(n => n.genre).filter(g => g))].slice(0, 10);
+                genres.forEach(genre => {
+                    sankeyNodes.push({
+                        id: `genre_${genre}`,
+                        name: genre,
+                        layer: 0,
+                        category: 'genre',
+                        color: config.colors.genre
+                    });
+                    nodeIndex.set(`genre_${genre}`, sankeyNodes.length - 1);
+                });
+
+                // Add time period nodes
+                const timePeriods = ['Pre-1990', '1990-2000', '2000-2010', '2010+'];
+                timePeriods.forEach(period => {
+                    sankeyNodes.push({
+                        id: `time_${period}`,
+                        name: period,
+                        layer: 1,
+                        category: 'temporal',
+                        color: config.colors.temporal
+                    });
+                    nodeIndex.set(`time_${period}`, sankeyNodes.length - 1);
+                });
+
+                // Add success level nodes
+                Object.keys(successCategories).forEach(level => {
+                    sankeyNodes.push({
+                        id: `success_${level}`,
+                        name: level,
+                        layer: 2,
+                        category: 'success',
+                        color: config.colors.success
+                    });
+                    nodeIndex.set(`success_${level}`, sankeyNodes.length - 1);
+                });
+
+                // Create links: Genres → Time Periods
+                const genreToTime = {};
+                nodes.forEach(node => {
+                    if (node.genre && node.release_date) {
+                        let timePeriod = 'Pre-1990';
+                        if (node.release_date >= 2010) timePeriod = '2010+';
+                        else if (node.release_date >= 2000) timePeriod = '2000-2010';
+                        else if (node.release_date >= 1990) timePeriod = '1990-2000';
+                        
+                        const key = `${node.genre}_${timePeriod}`;
+                        genreToTime[key] = (genreToTime[key] || 0) + 1;
+                    }
+                });
+
+                Object.entries(genreToTime).forEach(([key, count]) => {
+                    const [genre, timePeriod] = key.split('_');
+                    if (count >= activeFilters.minFlowStrength) {
+                        const sourceIdx = nodeIndex.get(`genre_${genre}`);
+                        const targetIdx = nodeIndex.get(`time_${timePeriod}`);
+                        if (sourceIdx !== undefined && targetIdx !== undefined) {
+                            sankeyLinks.push({
+                                source: sourceIdx,
+                                target: targetIdx,
+                                value: count,
+                                color: config.colors.genre
+                            });
+                        }
+                    }
+                });
+
+                // Create links: Time Periods → Success Levels
+                const timeToSuccess = {};
+                nodes.forEach(node => {
+                    if (node.release_date) {
+                        let timePeriod = 'Pre-1990';
+                        if (node.release_date >= 2010) timePeriod = '2010+';
+                        else if (node.release_date >= 2000) timePeriod = '2000-2010';
+                        else if (node.release_date >= 1990) timePeriod = '1990-2000';
+                        
+                        let successLevel = 'Low Success';
+                        if (node.success_score > 100) successLevel = 'High Success';
+                        else if (node.success_score > 20) successLevel = 'Medium Success';
+                        
+                        const key = `${timePeriod}_${successLevel}`;
+                        timeToSuccess[key] = (timeToSuccess[key] || 0) + 1;
+                    }
+                });
+
+                Object.entries(timeToSuccess).forEach(([key, count]) => {
+                    const [timePeriod, successLevel] = key.split('_');
+                    if (count >= activeFilters.minFlowStrength) {
+                        const sourceIdx = nodeIndex.get(`time_${timePeriod}`);
+                        const targetIdx = nodeIndex.get(`success_${successLevel}`);
+                        if (sourceIdx !== undefined && targetIdx !== undefined) {
+                            sankeyLinks.push({
+                                source: sourceIdx,
+                                target: targetIdx,
+                                value: count,
+                                color: config.colors.temporal
+                            });
+                        }
+                    }
+                });
+
+            } else if (activeFilters.pathwayFocus === 'collaboration') {
+                // Create pathway: Collaboration Types → Influence Levels → Success
+                
+                // Add collaboration type nodes
+                const collabTypes = ['Single Artist', 'Small Group (2-3)', 'Large Group (4+)', 'Cross-Genre'];
+                collabTypes.forEach(type => {
+                    sankeyNodes.push({
+                        id: `collab_${type}`,
+                        name: type,
+                        layer: 0,
+                        category: 'professional',
+                        color: config.colors.professional
+                    });
+                    nodeIndex.set(`collab_${type}`, sankeyNodes.length - 1);
+                });
+
+                // Add influence level nodes
+                const influenceLevels = ['Low Influence (0-2)', 'Medium Influence (3-10)', 'High Influence (10+)'];
+                influenceLevels.forEach(level => {
+                    sankeyNodes.push({
+                        id: `inf_${level}`,
+                        name: level,
+                        layer: 1,
+                        category: 'influence',
+                        color: config.colors.influence
+                    });
+                    nodeIndex.set(`inf_${level}`, sankeyNodes.length - 1);
+                });
+
+                // Add success level nodes
+                Object.keys(successCategories).forEach(level => {
+                    sankeyNodes.push({
+                        id: `success_${level}`,
+                        name: level,
+                        layer: 2,
+                        category: 'success',
+                        color: config.colors.success
+                    });
+                    nodeIndex.set(`success_${level}`, sankeyNodes.length - 1);
+                });
+
+                // Create links: Collaboration → Influence
+                const collabToInfluence = {};
+                nodes.forEach(node => {
+                    // Determine collaboration type (simplified)
+                    let collabType = 'Single Artist';
+                    if (node.influences_received > 10) collabType = 'Cross-Genre';
+                    else if (node.influences_received > 5) collabType = 'Large Group (4+)';
+                    else if (node.influences_received > 2) collabType = 'Small Group (2-3)';
+                    
+                    // Determine influence level
+                    let influenceLevel = 'Low Influence (0-2)';
+                    if (node.influences_received >= 10) influenceLevel = 'High Influence (10+)';
+                    else if (node.influences_received >= 3) influenceLevel = 'Medium Influence (3-10)';
+                    
+                    const key = `${collabType}_${influenceLevel}`;
+                    collabToInfluence[key] = (collabToInfluence[key] || 0) + 1;
+                });
+
+                Object.entries(collabToInfluence).forEach(([key, count]) => {
+                    const [collabType, influenceLevel] = key.split('_');
+                    if (count >= activeFilters.minFlowStrength) {
+                        const sourceIdx = nodeIndex.get(`collab_${collabType}`);
+                        const targetIdx = nodeIndex.get(`inf_${influenceLevel}`);
+                        if (sourceIdx !== undefined && targetIdx !== undefined) {
+                            sankeyLinks.push({
+                                source: sourceIdx,
+                                target: targetIdx,
+                                value: count,
+                                color: config.colors.professional
+                            });
+                        }
+                    }
+                });
+
+                // Create links: Influence → Success
+                const influenceToSuccess = {};
+                nodes.forEach(node => {
+                    let influenceLevel = 'Low Influence (0-2)';
+                    if (node.influences_received >= 10) influenceLevel = 'High Influence (10+)';
+                    else if (node.influences_received >= 3) influenceLevel = 'Medium Influence (3-10)';
+                    
+                    let successLevel = 'Low Success';
+                    if (node.success_score > 100) successLevel = 'High Success';
+                    else if (node.success_score > 20) successLevel = 'Medium Success';
+                    
+                    const key = `${influenceLevel}_${successLevel}`;
+                    influenceToSuccess[key] = (influenceToSuccess[key] || 0) + 1;
+                });
+
+                Object.entries(influenceToSuccess).forEach(([key, count]) => {
+                    const [influenceLevel, successLevel] = key.split('_');
+                    if (count >= activeFilters.minFlowStrength) {
+                        const sourceIdx = nodeIndex.get(`inf_${influenceLevel}`);
+                        const targetIdx = nodeIndex.get(`success_${successLevel}`);
+                        if (sourceIdx !== undefined && targetIdx !== undefined) {
+                            sankeyLinks.push({
+                                source: sourceIdx,
+                                target: targetIdx,
+                                value: count,
+                                color: config.colors.influence
+                            });
+                        }
+                    }
+                });
+
+            } else if (activeFilters.pathwayFocus === 'temporal') {
+                // Create pathway: Decades → Genres → Success Levels
+                
+                // Add decade nodes
+                const decades = ['1960s', '1970s', '1980s', '1990s', '2000s', '2010s', '2020s'];
+                decades.forEach(decade => {
+                    sankeyNodes.push({
+                        id: `decade_${decade}`,
+                        name: decade,
+                        layer: 0,
+                        category: 'temporal',
+                        color: config.colors.temporal
+                    });
+                    nodeIndex.set(`decade_${decade}`, sankeyNodes.length - 1);
+                });
+
+                // Add genre nodes
+                const genres = [...new Set(nodes.map(n => n.genre).filter(g => g))].slice(0, 8);
+                genres.forEach(genre => {
+                    sankeyNodes.push({
+                        id: `genre_${genre}`,
+                        name: genre,
+                        layer: 1,
+                        category: 'genre',
+                        color: config.colors.genre
+                    });
+                    nodeIndex.set(`genre_${genre}`, sankeyNodes.length - 1);
+                });
+
+                // Add success level nodes
+                Object.keys(successCategories).forEach(level => {
+                    sankeyNodes.push({
+                        id: `success_${level}`,
+                        name: level,
+                        layer: 2,
+                        category: 'success',
+                        color: config.colors.success
+                    });
+                    nodeIndex.set(`success_${level}`, sankeyNodes.length - 1);
+                });
+
+                // Create links: Decades → Genres
+                const decadeToGenre = {};
+                nodes.forEach(node => {
+                    if (node.genre && node.release_date) {
+                        const decade = `${Math.floor(node.release_date / 10) * 10}s`;
+                        if (decades.includes(decade)) {
+                            const key = `${decade}_${node.genre}`;
+                            decadeToGenre[key] = (decadeToGenre[key] || 0) + 1;
+                        }
+                    }
+                });
+
+                Object.entries(decadeToGenre).forEach(([key, count]) => {
+                    const [decade, genre] = key.split('_');
+                    if (count >= activeFilters.minFlowStrength) {
+                        const sourceIdx = nodeIndex.get(`decade_${decade}`);
+                        const targetIdx = nodeIndex.get(`genre_${genre}`);
+                        if (sourceIdx !== undefined && targetIdx !== undefined) {
+                            sankeyLinks.push({
+                                source: sourceIdx,
+                                target: targetIdx,
+                                value: count,
+                                color: config.colors.temporal
+                            });
+                        }
+                    }
+                });
+
+                // Create links: Genres → Success Levels
+                const genreToSuccess = {};
+                nodes.forEach(node => {
+                    if (node.genre) {
+                        let successLevel = 'Low Success';
+                        if (node.success_score > 100) successLevel = 'High Success';
+                        else if (node.success_score > 20) successLevel = 'Medium Success';
+                        
+                        const key = `${node.genre}_${successLevel}`;
+                        genreToSuccess[key] = (genreToSuccess[key] || 0) + 1;
+                    }
+                });
+
+                Object.entries(genreToSuccess).forEach(([key, count]) => {
+                    const [genre, successLevel] = key.split('_');
+                    if (count >= activeFilters.minFlowStrength) {
+                        const sourceIdx = nodeIndex.get(`genre_${genre}`);
+                        const targetIdx = nodeIndex.get(`success_${successLevel}`);
+                        if (sourceIdx !== undefined && targetIdx !== undefined) {
+                            sankeyLinks.push({
+                                source: sourceIdx,
+                                target: targetIdx,
+                                value: count,
+                                color: config.colors.genre
+                            });
+                        }
+                    }
+                });
             }
 
             return { nodes: sankeyNodes, links: sankeyLinks };
