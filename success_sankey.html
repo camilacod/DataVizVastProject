@@ -996,6 +996,7 @@
             // Clear existing elements
             svg.selectAll('.node').remove();
             svg.selectAll('.link').remove();
+            svg.selectAll('.link-label').remove();
 
             // Generate Sankey layout
             const graph = sankey({
