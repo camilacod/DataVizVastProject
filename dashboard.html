@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Visualization Dashboard</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #181c20;
+            margin: 0;
+            padding: 0;
+        }
+        .dashboard-header {
+            background: #23272b;
+            padding: 20px 0 10px 0;
+            text-align: center;
+        }
+        .dashboard-title {
+            color: #fff;
+            font-size: 2rem;
+            margin-bottom: 10px;
+        }
+        .dashboard-nav {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            margin-bottom: 10px;
+        }
+        .dashboard-btn {
+            padding: 10px 24px;
+            border: none;
+            border-radius: 5px 5px 0 0;
+            background: #333;
+            color: #fff;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .dashboard-btn.active, .dashboard-btn:hover {
+            background: #0074d9;
+            color: #fff;
+        }
+        .dashboard-content {
+            width: 100vw;
+            height: calc(100vh - 90px);
+            background: #222;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+        }
+        iframe {
+            width: 95vw;
+            height: 85vh;
+            border: none;
+            background: #fff;
+            box-shadow: 0 2px 16px rgba(0,0,0,0.2);
+            border-radius: 8px;
+        }
+    </style>
+</head>
+<body>
+    <div class="dashboard-header">
+        <div class="dashboard-title">Oceanus Folk Visualizations Dashboard</div>
+        <div class="dashboard-nav">
+            <button class="dashboard-btn" data-src="rising_stars.html">Rising Stars</button>
+            <button class="dashboard-btn active" data-src="sailor_simple_network.html">Sailor Ego Network</button>
+            <button class="dashboard-btn" data-src="success_sankey.html">Success Sankey</button>
+            <button class="dashboard-btn" data-src="index.html">Influence Network</button>
+        </div>
+    </div>
+    <div class="dashboard-content">
+        <iframe id="vizFrame" src="rising_stars.html"></iframe>
+    </div>
+    <script>
+        const buttons = document.querySelectorAll('.dashboard-btn');
+        const iframe = document.getElementById('vizFrame');
+        buttons.forEach(btn => {
+            btn.addEventListener('click', function() {
+                buttons.forEach(b => b.classList.remove('active'));
+                this.classList.add('active');
+                iframe.src = this.getAttribute('data-src');
+            });
+        });
+    </script>
+</body>
+</html> 

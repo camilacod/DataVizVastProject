@@ -1,307 +1,245 @@
-/**
- * SAILOR SHIFT - EGO NETWORK VISUALIZATION
- * Visualización interactiva de la red de conexiones de Sailor Shift
- */
-
-// ===== CONFIGURACIÓN GLOBAL =====
-const CONFIG = {
-    // Dimensiones (se calculan dinámicamente)
+// Configuration
+const config = {
     width: 0,
     height: 0,
-    
-    // Colores por tipo de nodo
     colors: {
-        person: "#ff6b6b",    // Rojo para personas
-        song: "#4ecdc4",      // Turquesa para canciones
-        album: "#45b7d1",     // Azul para álbumes
-        group: "#96ceb4",     // Verde para grupos
-        label: "#ffd93d"      // Amarillo para sellos
+        person: "#e74c3c", // red
+        song: "#3498db",   // blue
+        album: "#f1c40f",  // yellow
+        group: "#9b59b6",  // purple
+        label: "#27ae60",   // green
+        musicalgroup: "#ffffff",
     },
-    
-    // Tamaños de nodos
     nodeRadius: {
-        center: 20,           // Nodo central (Sailor Shift)
-        normal: 8,            // Nodos normales
-        notable: 12           // Nodos notables
-    },
-    
-    // Configuración de fuerzas
-    forces: {
-        linkDistance: 100,    // Distancia entre nodos conectados
-        chargeStrength: -300, // Fuerza de repulsión
-        collisionRadius: 30   // Radio de colisión
+        center: 10, // was 20, now smaller for Sailor Shift
+        normal: 8,
+        notable: 12
     }
 };
 
-// ===== VARIABLES GLOBALES =====
+// Initialize visualization
 let svg, simulation;
 let networkData;
 let currentView = 'collaboration';
 let currentDepth = 1;
 let centerNode = null;
 
-// ===== INICIALIZACIÓN PRINCIPAL =====
-document.addEventListener('DOMContentLoaded', function() {
-    initializeApp();
+// Load and process data
+Promise.all([
+    d3.json('MC1_graph.json')
+]).then(([graphData]) => {
+    // Process data for network visualization
+    networkData = processNetworkData(graphData);
+    
+    // Initialize visualization
+    initializeVisualization();
+    createNetwork();
+    updateMetrics();
+    
+}).catch(error => {
+    console.error('Error loading data:', error);
 });
 
-async function initializeApp() {
-    try {
-        // Cargar datos
-        console.log('Cargando datos...');
-        const graphData = await d3.json('MC1_graph.json');
-        
-        // Procesar datos
-        console.log('Procesando datos de la red...');
-        networkData = processNetworkData(graphData);
-        
-        if (!networkData) {
-            throw new Error('No se pudo procesar los datos de la red');
-        }
-        
-        // Inicializar visualización
-        console.log('Inicializando visualización...');
-        initializeVisualization();
-        createNetwork();
-        updateMetrics();
-        
-        console.log('Visualización lista!');
-        
-    } catch (error) {
-        console.error('Error al inicializar la aplicación:', error);
-        showError('Error al cargar los datos. Por favor, verifica que el archivo MC1_graph.json esté disponible.');
-    }
-}
-
-// ===== PROCESAMIENTO DE DATOS =====
 function processNetworkData(graphData) {
-    // Buscar el nodo central (Sailor Shift)
+    // Find Sailor Shift's node
     const sailorNode = graphData.nodes.find(n => n.name === "Sailor Shift");
-    if (!sailorNode) {
-        console.error('No se encontró el nodo "Sailor Shift"');
-        return null;
-    }
-    
-    console.log('Nodo central encontrado:', sailorNode.name);
+    if (!sailorNode) return null;
+
     centerNode = sailorNode;
-    
+
     const nodes = new Map();
     const links = new Map();
-    
-    // Agregar nodo central
-    addNodeToNetwork(nodes, sailorNode, 0, true);
-    
-    // Procesar conexiones directas (profundidad 1)
-    processDirectConnections(graphData, nodes, links, sailorNode);
-    
-    // Procesar conexiones indirectas (profundidad 2)
-    processIndirectConnections(graphData, nodes, links);
-    
-    const result = {
-        nodes: Array.from(nodes.values()),
-        links: Array.from(links.values())
-    };
-    
-    console.log(`Red procesada: ${result.nodes.length} nodos, ${result.links.length} enlaces`);
-    return result;
-}
 
-function addNodeToNetwork(nodes, nodeData, depth, isCenter = false) {
-    nodes.set(nodeData.id, {
-        id: nodeData.id,
-        name: nodeData.name,
-        type: nodeData['Node Type'],
-        notable: nodeData.notable || false,
-        depth: depth,
-        center: isCenter
+    // Add center node
+    nodes.set(sailorNode.id, {
+        id: sailorNode.id,
+        name: sailorNode.name,
+        type: sailorNode['Node Type'],
+        notable: sailorNode.notable || false,
+        depth: 0,
+        center: true
     });
-}
 
-function processDirectConnections(graphData, nodes, links, sailorNode) {
+    // Process direct connections (depth 1)
     graphData.links.forEach(link => {
         if (link.source === sailorNode.id || link.target === sailorNode.id) {
-            const otherId = link.source === sailorNode.id ? link.target : link.source;
+            const isSource = link.source === sailorNode.id;
+            const otherId = isSource ? link.target : link.source;
             const otherNode = graphData.nodes.find(n => n.id === otherId);
             
-            if (otherNode) {
-                addNodeToNetwork(nodes, otherNode, 1);
-                addLinkToNetwork(links, link);
+            if (!otherNode) return;
+
+            // Add node if not exists
+            if (!nodes.has(otherId)) {
+                nodes.set(otherId, {
+                    id: otherId,
+                    name: otherNode.name,
+                    type: otherNode['Node Type'],
+                    notable: otherNode.notable || false,
+                    depth: 1
+                });
+            } else {
+                // If node already exists, set depth to 1 if it's less than current
+                if (nodes.get(otherId).depth > 1) {
+                    nodes.get(otherId).depth = 1;
+                }
+            }
+
+            // Add link
+            const linkId = `${link.source}-${link.target}`;
+            if (!links.has(linkId)) {
+                links.set(linkId, {
+                    source: link.source,
+                    target: link.target,
+                    type: link['Edge Type'],
+                    isInfluence: ['InStyleOf', 'CoverOf', 'DirectlySamples', 'InterpolatesFrom', 'LyricalReferenceTo'].includes(link['Edge Type'])
+                });
             }
         }
     });
-}
 
-function processIndirectConnections(graphData, nodes, links) {
+    // Process indirect connections (depth 2)
     nodes.forEach(node => {
         if (node.depth === 1) {
             graphData.links.forEach(link => {
                 if (link.source === node.id || link.target === node.id) {
-                    const otherId = link.source === node.id ? link.target : link.source;
-                    
+                    const isSource = link.source === node.id;
+                    const otherId = isSource ? link.target : link.source;
+                    // Do not add Sailor Shift again
+                    if (otherId === sailorNode.id) return;
+                    const otherNode = graphData.nodes.find(n => n.id === otherId);
+                    if (!otherNode) return;
+
+                    // Only add as depth 2 if not already present
                     if (!nodes.has(otherId)) {
-                        const otherNode = graphData.nodes.find(n => n.id === otherId);
-                        if (otherNode) {
-                            addNodeToNetwork(nodes, otherNode, 2);
-                        }
+                        nodes.set(otherId, {
+                            id: otherId,
+                            name: otherNode.name,
+                            type: otherNode['Node Type'],
+                            notable: otherNode.notable || false,
+                            depth: 2
+                        });
                     }
-                    
-                    addLinkToNetwork(links, link);
+
+                    const linkId = `${link.source}-${link.target}`;
+                    if (!links.has(linkId)) {
+                        links.set(linkId, {
+                            source: link.source,
+                            target: link.target,
+                            type: link['Edge Type'],
+                            isInfluence: ['InStyleOf', 'CoverOf', 'DirectlySamples', 'InterpolatesFrom', 'LyricalReferenceTo'].includes(link['Edge Type'])
+                        });
+                    }
                 }
             });
         }
     });
+
+    return {
+        nodes: Array.from(nodes.values()),
+        links: Array.from(links.values())
+    };
 }
 
-function addLinkToNetwork(links, linkData) {
-    const linkId = `${linkData.source}-${linkData.target}`;
-    if (!links.has(linkId)) {
-        links.set(linkId, {
-            source: linkData.source,
-            target: linkData.target,
-            type: linkData['Edge Type'],
-            isInfluence: isInfluenceLink(linkData['Edge Type'])
-        });
-    }
-}
-
-function isInfluenceLink(edgeType) {
-    const influenceTypes = ['InStyleOf', 'CoverOf', 'DirectlySamples', 'InterpolatesFrom', 'LyricalReferenceTo'];
-    return influenceTypes.includes(edgeType);
-}
-
-// ===== INICIALIZACIÓN DE LA VISUALIZACIÓN =====
 function initializeVisualization() {
-    setupDimensions();
-    createSVG();
-    createForceSimulation();
-    setupEventListeners();
-    createLegend();
-}
-
-function setupDimensions() {
+    // Set dimensions
     const container = document.getElementById('network-view');
-    CONFIG.width = container.clientWidth;
-    CONFIG.height = container.clientHeight;
-    console.log(`Dimensiones: ${CONFIG.width}x${CONFIG.height}`);
-}
+    config.width = container.clientWidth;
+    config.height = container.clientHeight;
 
-function createSVG() {
+    // Create SVG
     svg = d3.select('#network-view')
         .append('svg')
-        .attr('width', CONFIG.width)
-        .attr('height', CONFIG.height);
-    
-    // Agregar zoom
+        .attr('width', config.width)
+        .attr('height', config.height);
+
+    // Add zoom behavior
     const zoom = d3.zoom()
         .scaleExtent([0.1, 4])
         .on('zoom', (event) => {
             svg.select('g').attr('transform', event.transform);
         });
-    
+
     svg.call(zoom);
-}
 
-function createForceSimulation() {
+    // Create force simulation
     simulation = d3.forceSimulation()
-        .force('link', d3.forceLink()
-            .id(d => d.id)
-            .distance(CONFIG.forces.linkDistance))
-        .force('charge', d3.forceManyBody()
-            .strength(CONFIG.forces.chargeStrength))
-        .force('center', d3.forceCenter(CONFIG.width / 2, CONFIG.height / 2))
-        .force('collision', d3.forceCollide()
-            .radius(CONFIG.forces.collisionRadius));
-}
+        .force('link', d3.forceLink().id(d => d.id).distance(100))
+        .force('charge', d3.forceManyBody().strength(-300))
+        .force('center', d3.forceCenter(config.width / 2, config.height / 2))
+        .force('collision', d3.forceCollide().radius(30));
 
-function setupEventListeners() {
-    // Botones de vista
+    // Add event listeners
     document.querySelectorAll('.view-toggle').forEach(button => {
-        button.addEventListener('click', handleViewToggle);
+        button.addEventListener('click', (event) => {
+            document.querySelectorAll('.view-toggle').forEach(b => b.classList.remove('active'));
+            event.target.classList.add('active');
+            currentView = event.target.dataset.view;
+            updateVisualization();
+            centerOnSailorShift();
+        });
     });
-    
-    // Filtro de profundidad
-    document.getElementById('depthFilter').addEventListener('change', handleDepthChange);
-    
-    // Redimensionamiento de ventana
-    window.addEventListener('resize', handleWindowResize);
+
+    document.getElementById('depthFilter').addEventListener('change', (event) => {
+        currentDepth = parseInt(event.target.value);
+        updateVisualization();
+        centerOnSailorShift();
+    });
+
+    // Create legend
+    createLegend();
 }
 
-// ===== MANEJO DE EVENTOS =====
-function handleViewToggle(event) {
-    // Actualizar botones
-    document.querySelectorAll('.view-toggle').forEach(b => b.classList.remove('active'));
-    event.target.classList.add('active');
-    
-    // Cambiar vista
-    currentView = event.target.dataset.view;
-    console.log(`Vista cambiada a: ${currentView}`);
-    updateVisualization();
+function createLegend() {
+    const legend = d3.select('#nodeLegend');
+    const nodeTypes = Object.entries(config.colors);
+
+    const legendItems = legend.selectAll('.legend-item')
+        .data(nodeTypes)
+        .enter()
+        .append('div')
+        .attr('class', 'legend-item');
+
+    legendItems.append('div')
+        .attr('class', 'legend-color')
+        .style('background', d => d[1]);
+
+    legendItems.append('span')
+        .text(d => d[0].charAt(0).toUpperCase() + d[0].slice(1));
 }
 
-function handleDepthChange(event) {
-    currentDepth = parseInt(event.target.value);
-    console.log(`Profundidad cambiada a: ${currentDepth}`);
-    updateVisualization();
-}
-
-function handleWindowResize() {
-    CONFIG.width = document.getElementById('network-view').clientWidth;
-    CONFIG.height = document.getElementById('network-view').clientHeight;
-    
-    svg.attr('width', CONFIG.width)
-       .attr('height', CONFIG.height);
-    
-    simulation.force('center', d3.forceCenter(CONFIG.width / 2, CONFIG.height / 2));
-    simulation.alpha(1).restart();
-}
-
-// ===== CREACIÓN DE LA RED =====
 function createNetwork() {
-    console.log('Creando red de visualización...');
-    
-    // Limpiar SVG anterior
+    // Clear previous
     svg.selectAll('*').remove();
-    
-    // Crear contenedor principal
-    const container = svg.append('g');
-    
-    // Filtrar datos según configuración actual
-    const filteredData = filterNetworkData();
-    console.log(`Datos filtrados: ${filteredData.nodes.length} nodos, ${filteredData.links.length} enlaces`);
-    
-    // Crear elementos visuales
-    createLinks(container, filteredData.links);
-    createNodes(container, filteredData.nodes);
-    createLabels(container, filteredData.nodes);
-    
-    // Actualizar simulación
-    updateSimulation(filteredData);
-}
 
-function createLinks(container, links) {
-    const linkElements = container.append('g')
+    const container = svg.append('g');
+
+    // Filter data based on current view and depth
+    const filteredData = filterNetworkData();
+
+    // Create links
+    const links = container.append('g')
         .selectAll('line')
-        .data(links)
+        .data(filteredData.links)
         .enter()
         .append('line')
         .attr('class', d => d.isInfluence ? 'link-influence' : 'link')
         .style('stroke', '#666')
         .style('stroke-width', d => d.isInfluence ? 2 : 1)
-        .style('stroke-opacity', 0.6);
-    
-    return linkElements;
-}
+        .style('stroke-opacity', 1);
 
-function createNodes(container, nodes) {
-    const nodeElements = container.append('g')
+    // Create nodes
+    const nodes = container.append('g')
         .selectAll('circle')
-        .data(nodes)
+        .data(filteredData.nodes)
         .enter()
         .append('circle')
-        .attr('r', getNodeRadius)
-        .style('fill', getNodeColor)
-        .style('stroke', getNodeStroke)
-        .style('stroke-width', getNodeStrokeWidth)
+        .attr('r', d => d.center ? config.nodeRadius.center : 
+                      d.notable ? config.nodeRadius.notable : 
+                      config.nodeRadius.normal)
+        .style('fill', d => config.colors[d.type.toLowerCase()])
+        // Highlight edges: Sailor Shift gets no border, others get gold thick border
+        .style('stroke-width', d => d.center ? 0 : 3)
         .call(d3.drag()
             .on('start', dragstarted)
             .on('drag', dragged)
@@ -309,14 +247,11 @@ function createNodes(container, nodes) {
         .on('mouseover', showNodeTooltip)
         .on('mouseout', hideTooltip)
         .on('click', handleNodeClick);
-    
-    return nodeElements;
-}
 
-function createLabels(container, nodes) {
-    const labelElements = container.append('g')
+    // Add labels
+    const labels = container.append('g')
         .selectAll('text')
-        .data(nodes)
+        .data(filteredData.nodes)
         .enter()
         .append('text')
         .text(d => d.name)
@@ -324,125 +259,84 @@ function createLabels(container, nodes) {
         .attr('fill', '#fff')
         .attr('text-anchor', 'middle')
         .attr('dy', 20);
-    
-    return labelElements;
+
+    // Update simulation
+    simulation
+        .nodes(filteredData.nodes)
+        .on('tick', () => {
+            links
+                .attr('x1', d => d.source.x)
+                .attr('y1', d => d.source.y)
+                .attr('x2', d => d.target.x)
+                .attr('y2', d => d.target.y);
+
+            nodes
+                .attr('cx', d => d.x)
+                .attr('cy', d => d.y);
+
+            labels
+                .attr('x', d => d.x)
+                .attr('y', d => d.y);
+        });
+
+    simulation.force('link')
+        .links(filteredData.links);
+
+    simulation.alpha(1).restart();
 }
 
-// ===== FUNCIONES DE ESTILO =====
-function getNodeRadius(d) {
-    if (d.center) return CONFIG.nodeRadius.center;
-    if (d.notable) return CONFIG.nodeRadius.notable;
-    return CONFIG.nodeRadius.normal;
-}
-
-function getNodeColor(d) {
-    return CONFIG.colors[d.type.toLowerCase()] || '#ccc';
-}
-
-function getNodeStroke(d) {
-    return d.notable ? '#ffd700' : '#fff';
-}
-
-function getNodeStrokeWidth(d) {
-    return d.notable ? 2 : 1;
-}
-
-// ===== FILTRADO DE DATOS =====
 function filterNetworkData() {
-    // Filtrar nodos por profundidad
-    const filteredNodes = networkData.nodes.filter(node => 
+    const nodes = networkData.nodes.filter(node => 
         node.depth <= currentDepth || node.center
     );
-    
-    const nodeIds = new Set(filteredNodes.map(n => n.id));
-    
-    // Filtrar enlaces por vista y nodos disponibles
-    const filteredLinks = networkData.links.filter(link => {
+
+    const nodeIds = new Set(nodes.map(n => n.id));
+
+    const links = networkData.links.filter(link => {
         const matchesView = currentView === 'influence' ? 
             link.isInfluence : 
             !link.isInfluence;
         
-        const sourceId = link.source.id || link.source;
-        const targetId = link.target.id || link.target;
-        
-        return matchesView && nodeIds.has(sourceId) && nodeIds.has(targetId);
+        return matchesView && 
+               nodeIds.has(link.source.id || link.source) && 
+               nodeIds.has(link.target.id || link.target);
     });
-    
-    return { nodes: filteredNodes, links: filteredLinks };
+
+    return { nodes, links };
 }
 
-// ===== ACTUALIZACIÓN DE LA VISUALIZACIÓN =====
 function updateVisualization() {
     createNetwork();
     updateMetrics();
 }
 
-function updateSimulation(data) {
-    simulation
-        .nodes(data.nodes)
-        .on('tick', () => {
-            // Actualizar posiciones de enlaces
-            svg.selectAll('line')
-                .attr('x1', d => d.source.x)
-                .attr('y1', d => d.source.y)
-                .attr('x2', d => d.target.x)
-                .attr('y2', d => d.target.y);
-            
-            // Actualizar posiciones de nodos
-            svg.selectAll('circle')
-                .attr('cx', d => d.x)
-                .attr('cy', d => d.y);
-            
-            // Actualizar posiciones de etiquetas
-            svg.selectAll('text')
-                .attr('x', d => d.x)
-                .attr('y', d => d.y);
-        });
-    
-    simulation.force('link').links(data.links);
-    simulation.alpha(1).restart();
-}
-
-// ===== MÉTRICAS Y PANEL DE INFORMACIÓN =====
 function updateMetrics() {
     const filteredData = filterNetworkData();
     
-    // Contar colaboradores directos
+    // Count direct collaborators
     const collaborators = filteredData.nodes.filter(n => n.depth === 1).length;
-    updateMetricValue('collaboratorCount', collaborators);
-    
-    // Contar alcance de influencia
+    document.getElementById('collaboratorCount').textContent = collaborators;
+
+    // Count influence reach
     const influenceLinks = filteredData.links.filter(l => l.isInfluence).length;
-    updateMetricValue('influenceCount', influenceLinks);
-    
-    // Contar conexiones notables
+    document.getElementById('influenceCount').textContent = influenceLinks;
+
+    // Count notable connections
     const notableNodes = filteredData.nodes.filter(n => n.notable && !n.center).length;
-    updateMetricValue('notableCount', notableNodes);
+    document.getElementById('notableCount').textContent = notableNodes;
 }
 
-function updateMetricValue(elementId, value) {
-    const element = document.getElementById(elementId);
-    if (element) {
-        element.textContent = value;
-    }
-}
-
-// ===== TOOLTIPS E INTERACTIVIDAD =====
 function showNodeTooltip(event, d) {
     const tooltip = d3.select('#tooltip');
     tooltip.style('display', 'block')
         .style('left', (event.pageX + 10) + 'px')
         .style('top', (event.pageY + 10) + 'px')
-        .html(createTooltipContent(d));
-}
-
-function createTooltipContent(d) {
-    return `
-        <strong>${d.name}</strong><br>
-        Tipo: ${d.type}<br>
-        ${d.notable ? '⭐ Notable<br>' : ''}
-        Distancia: ${d.depth} paso${d.depth !== 1 ? 's' : ''}
-    `;
+        .html(`
+            <strong>${d.name}</strong><br>
+            Type: ${d.type}<br>
+            ${d.notable ? '⭐ Notable' : ''}<br>
+            Distance: ${d.depth} step${d.depth !== 1 ? 's' : ''}
+        `);
 }
 
 function hideTooltip() {
@@ -450,63 +344,62 @@ function hideTooltip() {
 }
 
 function handleNodeClick(event, d) {
-    console.log('Nodo seleccionado:', d.name);
-    showNodeDetails(d);
-    highlightConnections(d);
-}
-
-function showNodeDetails(d) {
+    // Update node details panel
     const details = document.getElementById('nodeDetails');
     const title = document.getElementById('nodeTitle');
     const info = document.getElementById('nodeInfo');
-    
+
     details.style.display = 'block';
     title.textContent = d.name;
     info.innerHTML = `
-        Tipo: ${d.type}<br>
+        Type: ${d.type}<br>
         ${d.notable ? '⭐ Notable<br>' : ''}
-        Distancia en la red: ${d.depth} paso${d.depth !== 1 ? 's' : ''}<br>
+        Network Distance: ${d.depth} step${d.depth !== 1 ? 's' : ''}<br>
     `;
+
+    // Highlight connected nodes
+    highlightConnections(d);
 }
 
 function highlightConnections(node) {
-    // Resetear opacidad
-    svg.selectAll('circle').style('opacity', 0.3);
-    svg.selectAll('line').style('opacity', 0.1);
+    // Reset all nodes and links
+    svg.selectAll('circle')
+        .style('opacity', 0.3);
     
-    // Resaltar nodo seleccionado
+    svg.selectAll('line')
+        .style('opacity', );
+
+    // Highlight selected node
     svg.selectAll('circle')
         .filter(d => d.id === node.id)
         .style('opacity', 1);
-    
-    // Encontrar conexiones
+
+    // Highlight connected nodes and links
     const connectedLinks = networkData.links.filter(link => 
         link.source.id === node.id || link.target.id === node.id
     );
-    
+
     const connectedNodes = new Set();
     connectedLinks.forEach(link => {
         connectedNodes.add(link.source.id);
         connectedNodes.add(link.target.id);
     });
-    
-    // Resaltar nodos y enlaces conectados
+
     svg.selectAll('circle')
         .filter(d => connectedNodes.has(d.id))
         .style('opacity', 1);
-    
+
     svg.selectAll('line')
         .filter(d => d.source.id === node.id || d.target.id === node.id)
         .style('opacity', 1);
-    
-    // Restaurar después de 3 segundos
+
+    // Reset after delay
     setTimeout(() => {
         svg.selectAll('circle').style('opacity', 1);
         svg.selectAll('line').style('opacity', 0.6);
     }, 3000);
 }
 
-// ===== FUNCIONES DE ARRASTRE =====
 function dragstarted(event) {
     if (!event.active) simulation.alphaTarget(0.3).restart();
     event.subject.fx = event.subject.x;
@@ -524,34 +417,31 @@ function dragended(event) {
     event.subject.fy = null;
 }
 
-// ===== LEYENDA =====
-function createLegend() {
-    const legend = d3.select('#nodeLegend');
-    const nodeTypes = Object.entries(CONFIG.colors);
-    
-    const legendItems = legend.selectAll('.legend-item')
-        .data(nodeTypes)
-        .enter()
-        .append('div')
-        .attr('class', 'legend-item');
-    
-    legendItems.append('div')
-        .attr('class', 'legend-color')
-        .style('background', d => d[1]);
-    
-    legendItems.append('span')
-        .text(d => d[0].charAt(0).toUpperCase() + d[0].slice(1));
+// Add a function to center on Sailor Shift
+function centerOnSailorShift() {
+    // Find the main group (g) inside the svg
+    const svgElem = d3.select('#network-view svg');
+    const container = svgElem.select('g');
+    // Find Sailor Shift node in the current simulation
+    if (!simulation || !simulation.nodes) return;
+    const sailor = simulation.nodes().find(n => n.center);
+    if (sailor) {
+        const width = config.width;
+        const height = config.height;
+        const dx = width / 2 - sailor.x;
+        const dy = height / 2 - sailor.y;
+        container.attr('transform', `translate(${dx},${dy})`);
+    }
 }
 
-// ===== MANEJO DE ERRORES =====
-function showError(message) {
-    const container = document.getElementById('network-view');
-    container.innerHTML = `
-        <div style="display: flex; justify-content: center; align-items: center; height: 100%; color: #ff6b6b;">
-            <div style="text-align: center;">
-                <h3>Error</h3>
-                <p>${message}</p>
-            </div>
-        </div>
-    `;
-} 
+// Handle window resize
+window.addEventListener('resize', () => {
+    config.width = document.getElementById('network-view').clientWidth;
+    config.height = document.getElementById('network-view').clientHeight;
+
+    svg.attr('width', config.width)
+       .attr('height', config.height);
+
+    simulation.force('center', d3.forceCenter(config.width / 2, config.height / 2));
+    simulation.alpha(1).restart();
+});

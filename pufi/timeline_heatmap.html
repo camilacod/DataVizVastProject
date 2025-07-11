@@ -1,0 +1,644 @@
+<!--
+Cambios realizados:
+- Eliminados controles: Color Intensity, Normalize Data, Export Data y Reset View para simplificar la interfaz.
+- Scrubber de tiempo convertido a rango de años reales, funciona resaltando el año seleccionado y actualiza la etiqueta Current Year.
+- Tooltip mejorado: muestra Total Releases, Notable Releases, Total Influences y Top Works (primeras 3 obras).
+- Simplificada la escala de color a una interpolación continua d3.interpolateBlues para enfocarse en datos útiles.
+-->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Musical Genre Evolution Timeline</title>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <style>
+        body { 
+            margin: 0; 
+            padding: 0; 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            background: linear-gradient(135deg, #121212 0%, #191414 100%); 
+            color: #fff; 
+            overflow: hidden;
+        }
+        
+        #container { 
+            display: flex; 
+            flex-direction: column; 
+            height: 100vh; 
+        }
+        
+        .header { 
+            background: rgba(26, 26, 26, 0.95); 
+            padding: 16px 24px; 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center;
+            border-bottom: 1px solid rgba(30, 215, 96, 0.2);
+            backdrop-filter: blur(10px);
+        }
+        
+        .title { 
+            font-size: 24px; 
+            color: #1ed760; 
+            font-weight: 700;
+            letter-spacing: -0.5px;
+        }
+        
+        .controls-header { 
+            display: flex; 
+            align-items: center; 
+            gap: 20px; 
+        }
+        
+        .play-btn { 
+            background: #1ed760; 
+            border: none; 
+            padding: 12px 16px; 
+            border-radius: 25px; 
+            cursor: pointer;
+            color: #000;
+            font-weight: 700;
+            font-size: 16px;
+            transition: all 0.3s ease;
+            min-width: 50px;
+        }
+        
+        .play-btn:hover {
+            background: #1fdf64;
+            transform: scale(1.05);
+        }
+        
+        .speed-control { 
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: rgba(0, 0, 0, 0.3);
+            padding: 8px 16px;
+            border-radius: 20px;
+            border: 1px solid rgba(30, 215, 96, 0.2);
+        }
+        
+        .speed-control label { 
+            font-size: 12px;
+            color: #ccc;
+            font-weight: 600;
+        }
+        
+        .speed-control input {
+            accent-color: #1ed760;
+        }
+        
+        .current-year { 
+            font-weight: 900; 
+            color: #1ed760; 
+            font-size: 18px;
+            letter-spacing: -0.5px;
+        }
+        
+        #main-content { 
+            flex: 1; 
+            display: flex; 
+        }
+        
+        #visualization { 
+            flex: 1; 
+            position: relative; 
+            background: rgba(0, 0, 0, 0.1);
+        }
+        
+        svg { 
+            width: 100%; 
+            height: 100%; 
+        }
+        
+        .tooltip { 
+            position: absolute; 
+            background: rgba(25, 20, 20, 0.98); 
+            border: 1px solid rgba(30, 215, 96, 0.3); 
+            border-radius: 12px; 
+            padding: 16px; 
+            pointer-events: none; 
+            font-size: 12px; 
+            max-width: 300px;
+            backdrop-filter: blur(15px);
+            box-shadow: 0 8px 32px rgba(0,0,0,0.6), 0 0 0 1px rgba(30, 215, 96, 0.1);
+            z-index: 1000;
+        }
+        
+        .sidebar { 
+            width: 280px; 
+            background: rgba(26, 26, 26, 0.95); 
+            padding: 24px; 
+            overflow-y: auto;
+            border-left: 1px solid rgba(30, 215, 96, 0.2);
+            backdrop-filter: blur(10px);
+        }
+        
+        .control-group { 
+            margin-bottom: 20px; 
+        }
+        
+        .control-group label { 
+            display: block; 
+            font-size: 13px; 
+            margin-bottom: 8px; 
+            color: rgba(255, 255, 255, 0.8);
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .control-group select, .control-group input[type=range] { 
+            width: 100%;
+            padding: 10px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            color: #fff;
+            font-size: 14px;
+            transition: all 0.3s ease;
+        }
+        
+        .control-group select:focus, .control-group input:focus {
+            outline: none;
+            border-color: #1ed760;
+            box-shadow: 0 0 0 2px rgba(30, 215, 96, 0.2);
+        }
+        
+        .control-group input[type=range] {
+            accent-color: #1ed760;
+            background: transparent;
+            padding: 0;
+        }
+        
+        .heatmap-cell:hover {
+            stroke: #1ed760 !important;
+            stroke-width: 2px !important;
+            filter: brightness(1.2);
+        }
+    </style>
+</head>
+<body>
+    <div id="container">
+        <div class="header">
+            <div class="title">Musical Genre Evolution Timeline</div>
+            <div class="controls-header">
+                <button class="play-btn" id="playBtn">▶</button>
+                <div class="speed-control">
+                    <label>Speed:</label>
+                    <input type="range" id="animationSpeed" min="100" max="2000" value="800">
+                </div>
+                <div class="current-year" id="currentYear">All Time</div>
+            </div>
+        </div>
+        <div id="main-content">
+            <div id="visualization">
+                <svg id="heatmap-svg"></svg>
+                <div class="tooltip" id="tooltip" style="display:none;"></div>
+            </div>
+            <div class="sidebar">
+                <div class="control-group">
+                    <label>View Mode</label>
+                    <select id="viewMode">
+                        <option value="releases">Total Releases</option>
+                        <option value="notable">Notable Works</option>
+                        <option value="success_rate">Success Rate</option>
+                        <option value="influence">Influence</option>
+                    </select>
+                </div>
+                <div class="control-group">
+                    <label>Time Granularity</label>
+                    <select id="timeGranularity">
+                        <option value="year">By Year</option>
+                        <option value="decade">By Decade</option>
+                        <option value="period">5-Year Period</option>
+                    </select>
+                </div>
+                <div class="control-group">
+                    <label>Genre Count</label>
+                    <input type="range" id="genreCount" min="5" max="20" value="12">
+                    <span id="genreCountValue" style="color:#1ed760;">12</span>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script>
+        const config = { margin: { top: 40, right: 20, bottom: 60, left: 80 }, cellPadding:1 };
+        let svg, tooltip;
+        let originalData, processedData;
+        let currentAnimationYear = null;
+        let isAnimating = false, animationInterval;
+        let yearRange = [], genreList = [];
+        let activeFilters = { viewMode:'releases', timeGranularity:'year', genreCount:12 };
+        async function init(){
+            try {
+                console.log('Loading data...');
+                const graphData = await d3.json('MC1_graph.json');
+                const songsData = await d3.csv('songs_albums_analysis.csv');
+                console.log('Data loaded:', graphData.nodes?.length, 'nodes,', songsData?.length, 'songs');
+                
+                processTimelineData(graphData, songsData);
+                setupSVG();
+                setupControls();
+                
+                console.log('Rendering initial heatmap...');
+                render();
+                
+                document.getElementById('loading')?.remove();
+            } catch (error) {
+                console.error('Error during initialization:', error);
+                alert('Failed to load data. Check console for details.');
+            }
+        }
+        function processTimelineData(graphData, songsData){
+            console.log('Processing timeline data...');
+            
+            const songsLookup = {};
+            songsData.forEach(d => songsLookup[d.id] = d);
+            
+            const entries = [];
+            const years = new Set();
+            const genres = new Set();
+            
+            let processedNodes = 0;
+            graphData.nodes.forEach(node => {
+                if(node['Node Type'] === 'Song' || node['Node Type'] === 'Album'){
+                    const date = node.release_date || songsLookup[node.id]?.release_date;
+                    const year = parseInt(date);
+                    const genre = node.genre || songsLookup[node.id]?.genre;
+                    
+                    if(year >= 1950 && year <= 2025 && genre){
+                        entries.push({
+                            id: node.id,
+                            name: node.name,
+                            genre: genre,
+                            year: year,
+                            notable: node.notable || false,
+                            influences: 0
+                        });
+                        years.add(year);
+                        genres.add(genre);
+                        processedNodes++;
+                    }
+                }
+            });
+            
+            console.log('Processed', processedNodes, 'valid entries');
+            
+            // Calculate influence counts
+            const infCounts = {};
+            graphData.links.forEach(link => {
+                if(['InStyleOf','InterpolatesFrom','CoverOf','LyricalReferenceTo','DirectlySamples'].includes(link['Edge Type'])){
+                    infCounts[link.target] = (infCounts[link.target] || 0) + 1;
+                }
+            });
+            
+            entries.forEach(e => e.influences = infCounts[e.id] || 0);
+            
+            // Count entries per genre and sort by popularity
+            const counts = {};
+            entries.forEach(e => counts[e.genre] = (counts[e.genre] || 0) + 1);
+            
+            genreList = Object.entries(counts)
+                .sort((a, b) => b[1] - a[1])
+                .map(d => d[0]);
+                
+            yearRange = Array.from(years).sort((a, b) => a - b);
+            
+            console.log('Found', genreList.length, 'genres and', yearRange.length, 'years');
+            console.log('Year range:', yearRange[0], 'to', yearRange[yearRange.length - 1]);
+            console.log('Top 5 genres:', genreList.slice(0, 5));
+            
+            originalData = {
+                entries: entries,
+                genres: genreList,
+                years: yearRange
+            };
+            
+            updateProcessedData();
+        }
+        function updateProcessedData(){
+            if (!originalData || !originalData.entries) {
+                console.error('No original data available');
+                return;
+            }
+            
+            const top = originalData.genres.slice(0, activeFilters.genreCount);
+            let buckets = [];
+            
+            if(activeFilters.timeGranularity === 'year') {
+                buckets = originalData.years;
+            } else if(activeFilters.timeGranularity === 'decade') {
+                buckets = Array.from(new Set(originalData.years.map(y => Math.floor(y/10)*10))).sort((a,b) => a-b);
+            } else {
+                buckets = Array.from(new Set(originalData.years.map(y => Math.floor(y/5)*5))).sort((a,b) => a-b);
+            }
+            
+            console.log('Processing data for', top.length, 'genres and', buckets.length, 'time buckets');
+            
+            const matrix = [];
+            top.forEach((genre, genreIdx) => {
+                const genreRow = [];
+                buckets.forEach((timeBucket, timeIdx) => {
+                    const list = originalData.entries.filter(e => {
+                        if (e.genre !== genre) return false;
+                        if (activeFilters.timeGranularity === 'year') return e.year === timeBucket;
+                        if (activeFilters.timeGranularity === 'decade') return Math.floor(e.year/10)*10 === timeBucket;
+                        if (activeFilters.timeGranularity === 'period') return Math.floor(e.year/5)*5 === timeBucket;
+                        return false;
+                    });
+                    
+                    let val = list.length;
+                    if (activeFilters.viewMode === 'notable') val = list.filter(e => e.notable).length;
+                    else if (activeFilters.viewMode === 'success_rate') val = list.length ? list.filter(e => e.notable).length / list.length : 0;
+                    else if (activeFilters.viewMode === 'influence') val = d3.sum(list, d => d.influences);
+                    
+                    genreRow.push({
+                        genre: genre,
+                        i: genreIdx,
+                        j: timeIdx,
+                        time: timeBucket,
+                        val: val,
+                        entries: list
+                    });
+                });
+                matrix.push(genreRow);
+            });
+            
+            const maxValue = d3.max(matrix.flat(), d => d.val) || 1;
+            processedData = {matrix, genres: top, timeBuckets: buckets, maxValue};
+            
+            console.log('Processed data:', processedData.matrix.length, 'genre rows,', 'max value:', maxValue);
+            render();
+        }
+        function setupSVG(){
+            const vis = document.getElementById('visualization');
+            const totalWidth = vis.clientWidth;
+            const totalHeight = vis.clientHeight;
+            
+            console.log('Setting up SVG with dimensions:', totalWidth, 'x', totalHeight);
+            
+            // Clear any existing SVG content
+            d3.select('#heatmap-svg').selectAll('*').remove();
+            
+            svg = d3.select('#heatmap-svg')
+                .attr('width', totalWidth)
+                .attr('height', totalHeight)
+                .append('g')
+                .attr('transform', `translate(${config.margin.left}, ${config.margin.top})`);
+                
+            tooltip = d3.select('#tooltip');
+            
+            console.log('SVG setup complete');
+        }
+        function render(){
+            if (!processedData || !processedData.matrix) {
+                console.error('No processed data available for rendering');
+                return;
+            }
+            
+            if (!svg) {
+                console.error('SVG not initialized');
+                return;
+            }
+            
+            console.log('Starting render with', processedData.matrix.length, 'genre rows');
+            
+            svg.selectAll('*').remove();
+            
+            const container = document.getElementById('visualization');
+            const w = container.clientWidth - config.margin.left - config.margin.right;
+            const h = container.clientHeight - config.margin.top - config.margin.bottom;
+            
+            const cols = processedData.timeBuckets.length;
+            const rows = processedData.genres.length;
+            const cellW = w / cols;
+            const cellH = h / rows;
+            
+            console.log('Render dimensions:', w, 'x', h, 'with', cols, 'cols and', rows, 'rows');
+            console.log('Cell size:', cellW, 'x', cellH);
+            
+            // Create Spotify-inspired color scale
+            const spotifyColors = ['#121212', '#1a1a1a', '#2a2a2a', '#1ed760', '#1fdf64', '#17c653'];
+            const color = d3.scaleQuantize()
+                .domain([0, processedData.maxValue])
+                .range(spotifyColors);
+            
+            // Flatten matrix data for D3
+            const flatData = processedData.matrix.flat();
+            console.log('Flat data length:', flatData.length);
+            
+            // Create cells with proper data binding
+            const cells = svg.selectAll('.heatmap-cell')
+                .data(flatData)
+                .enter()
+                .append('rect')
+                .attr('class', 'heatmap-cell')
+                .attr('x', d => d.j * cellW)
+                .attr('y', d => d.i * cellH)
+                .attr('width', Math.max(0, cellW - config.cellPadding))
+                .attr('height', Math.max(0, cellH - config.cellPadding))
+                .attr('fill', d => color(d.val))
+                .style('stroke', '#333')
+                .style('stroke-width', '0.5px')
+                .style('cursor', 'pointer')
+                .on('mouseover', showDetail)
+                .on('mouseout', () => tooltip.style('display', 'none'))
+                .on('click', (event, d) => {
+                    console.log('Clicked:', d.genre, d.time, 'Value:', d.val);
+                });
+            
+            console.log('Created', cells.size(), 'heatmap cells');
+            
+            // Y-axis labels (genres)
+            const yLabels = svg.selectAll('.ylabel')
+                .data(processedData.genres)
+                .enter()
+                .append('text')
+                .attr('class', 'ylabel')
+                .attr('x', -8)
+                .attr('y', (d, i) => i * cellH + cellH / 2)
+                .attr('dy', '0.35em')
+                .text(d => d.length > 12 ? d.substring(0, 12) + '...' : d)
+                .attr('text-anchor', 'end')
+                .attr('fill', '#1ed760')
+                .attr('font-size', '11px')
+                .attr('font-weight', '600')
+                .style('cursor', 'pointer')
+                .on('click', (event, d) => highlightGenre(d));
+                
+            console.log('Created', yLabels.size(), 'Y labels');
+                
+            // X-axis labels (time)
+            const timeStep = Math.max(1, Math.floor(processedData.timeBuckets.length / 12));
+            const xLabels = svg.selectAll('.xlabel')
+                .data(processedData.timeBuckets.filter((d, i) => i % timeStep === 0))
+                .enter()
+                .append('text')
+                .attr('class', 'xlabel')
+                .attr('x', d => {
+                    const idx = processedData.timeBuckets.indexOf(d);
+                    return idx * cellW + cellW / 2;
+                })
+                .attr('y', h + 20)
+                .text(d => d)
+                .attr('text-anchor', 'middle')
+                .attr('fill', '#ccc')
+                .attr('font-size', '10px');
+                
+            console.log('Created', xLabels.size(), 'X labels');
+                
+            // Time indicator line
+            if(currentAnimationYear != null){
+                const idx = processedData.timeBuckets.indexOf(currentAnimationYear);
+                if(idx >= 0) {
+                    svg.append('line')
+                        .attr('class', 'time-indicator')
+                        .attr('x1', idx * cellW + cellW / 2)
+                        .attr('x2', idx * cellW + cellW / 2)
+                        .attr('y1', 0)
+                        .attr('y2', h)
+                        .attr('stroke', '#1ed760')
+                        .attr('stroke-width', 3)
+                        .style('opacity', 0.8);
+                }
+            }
+            
+            console.log('Render complete');
+        }
+        function showDetail(event, d) {
+            const total = d.entries.length;
+            const notable = d.entries.filter(e => e.notable).length;
+            const totalInf = d3.sum(d.entries, e => e.influences);
+            const avgInfluences = total > 0 ? (totalInf / total).toFixed(1) : '0';
+            const successRate = total > 0 ? ((notable / total) * 100).toFixed(1) : '0';
+            
+            // Get top works sorted by influences or notable status
+            const topWorks = d.entries
+                .sort((a, b) => (b.notable ? 1 : 0) - (a.notable ? 1 : 0) || b.influences - a.influences)
+                .slice(0, 4)
+                .map(e => `${e.name}${e.notable ? ' ⭐' : ''}${e.influences > 0 ? ` (${e.influences})` : ''}`)
+                .join('<br>• ');
+            
+            // Get current view mode description
+            let currentValue = '';
+            if (activeFilters.viewMode === 'releases') currentValue = `${total} releases`;
+            else if (activeFilters.viewMode === 'notable') currentValue = `${notable} notable works`;
+            else if (activeFilters.viewMode === 'success_rate') currentValue = `${successRate}% success rate`;
+            else if (activeFilters.viewMode === 'influence') currentValue = `${totalInf} total influences`;
+            
+            const html = `
+                <div style="border-left: 3px solid #1ed760; padding-left: 8px;">
+                    <div style="font-size: 14px; font-weight: bold; color: #1ed760; margin-bottom: 8px;">
+                        🎵 ${d.genre} • ${d.time}
+                    </div>
+                    <div style="background: rgba(30, 215, 96, 0.1); padding: 6px; border-radius: 4px; margin-bottom: 8px;">
+                        <strong>${currentValue}</strong>
+                    </div>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 8px; font-size: 11px;">
+                        <div>📊 Total: <strong>${total}</strong></div>
+                        <div>⭐ Notable: <strong>${notable}</strong></div>
+                        <div>🔗 Influences: <strong>${totalInf}</strong></div>
+                        <div>📈 Success: <strong>${successRate}%</strong></div>
+                    </div>
+                    ${topWorks ? `
+                        <div style="border-top: 1px solid rgba(255,255,255,0.2); padding-top: 6px;">
+                            <div style="font-size: 10px; color: #ccc; margin-bottom: 4px;">TOP WORKS:</div>
+                            <div style="font-size: 10px; line-height: 1.3;">• ${topWorks}</div>
+                        </div>
+                    ` : ''}
+                </div>
+            `;
+            
+            tooltip
+                .style('display', 'block')
+                .style('left', (event.pageX + 15) + 'px')
+                .style('top', (event.pageY + 10) + 'px')
+                .html(html);
+        }
+        function setupControls(){
+            document.getElementById('viewMode').onchange = e => {
+                activeFilters.viewMode = e.target.value;
+                updateProcessedData();
+            };
+            
+            document.getElementById('timeGranularity').onchange = e => {
+                activeFilters.timeGranularity = e.target.value;
+                updateProcessedData();
+            };
+            
+            document.getElementById('genreCount').oninput = e => {
+                activeFilters.genreCount = +e.target.value;
+                document.getElementById('genreCountValue').textContent = e.target.value;
+                updateProcessedData();
+            };
+            
+            document.getElementById('playBtn').onclick = toggleAnimation;
+            
+            // Fix animation speed control
+            document.getElementById('animationSpeed').oninput = e => {
+                // Update any active animation with new speed
+                if (isAnimating) {
+                    clearInterval(animationInterval);
+                    startAnimation();
+                }
+            };
+        }
+        
+        function toggleAnimation() {
+            const btn = document.getElementById('playBtn');
+            if (isAnimating) {
+                clearInterval(animationInterval);
+                isAnimating = false;
+                btn.textContent = '▶';
+                btn.style.background = '#1ed760';
+            } else {
+                startAnimation();
+            }
+        }
+        
+        function startAnimation() {
+            const btn = document.getElementById('playBtn');
+            isAnimating = true;
+            btn.textContent = '⏸';
+            btn.style.background = '#ff6b6b';
+            
+            let idx = 0;
+            const buckets = processedData.timeBuckets;
+            
+            animationInterval = setInterval(() => {
+                if (idx >= buckets.length) idx = 0;
+                
+                currentAnimationYear = buckets[idx];
+                document.getElementById('currentYear').textContent = currentAnimationYear;
+                
+                render();
+                idx++;
+            }, +document.getElementById('animationSpeed').value);
+        }
+        function highlightGenre(genre) {
+            // Highlight specific genre in heatmap
+            svg.selectAll('.heatmap-cell')
+                .style('opacity', d => d.genre === genre ? 1 : 0.3)
+                .style('stroke', d => d.genre === genre ? '#1ed760' : '#333')
+                .style('stroke-width', d => d.genre === genre ? '2px' : '0.5px');
+            
+            // Reset after 3 seconds
+            setTimeout(() => {
+                svg.selectAll('.heatmap-cell')
+                    .style('opacity', 1)
+                    .style('stroke', '#333')
+                    .style('stroke-width', '0.5px');
+            }, 3000);
+        }
+        
+        window.addEventListener('load', init);
+        window.addEventListener('resize', () => {
+            if (processedData) {
+                setTimeout(render, 100); // Small delay for proper resize
+            }
+        });
+    </script>
+</body>
+</html>

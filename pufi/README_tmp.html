@@ -1,0 +1,502 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>README.md</title>
+<meta http-equiv="Content-type" content="text/html;charset=UTF-8">
+
+<style>
+/* https://github.com/microsoft/vscode/blob/master/extensions/markdown-language-features/media/markdown.css */
+/*---------------------------------------------------------------------------------------------
+ *  Copyright (c) Microsoft Corporation. All rights reserved.
+ *  Licensed under the MIT License. See License.txt in the project root for license information.
+ *--------------------------------------------------------------------------------------------*/
+
+body {
+	font-family: var(--vscode-markdown-font-family, -apple-system, BlinkMacSystemFont, "Segoe WPC", "Segoe UI", "Ubuntu", "Droid Sans", sans-serif);
+	font-size: var(--vscode-markdown-font-size, 14px);
+	padding: 0 26px;
+	line-height: var(--vscode-markdown-line-height, 22px);
+	word-wrap: break-word;
+}
+
+#code-csp-warning {
+	position: fixed;
+	top: 0;
+	right: 0;
+	color: white;
+	margin: 16px;
+	text-align: center;
+	font-size: 12px;
+	font-family: sans-serif;
+	background-color:#444444;
+	cursor: pointer;
+	padding: 6px;
+	box-shadow: 1px 1px 1px rgba(0,0,0,.25);
+}
+
+#code-csp-warning:hover {
+	text-decoration: none;
+	background-color:#007acc;
+	box-shadow: 2px 2px 2px rgba(0,0,0,.25);
+}
+
+body.scrollBeyondLastLine {
+	margin-bottom: calc(100vh - 22px);
+}
+
+body.showEditorSelection .code-line {
+	position: relative;
+}
+
+body.showEditorSelection .code-active-line:before,
+body.showEditorSelection .code-line:hover:before {
+	content: "";
+	display: block;
+	position: absolute;
+	top: 0;
+	left: -12px;
+	height: 100%;
+}
+
+body.showEditorSelection li.code-active-line:before,
+body.showEditorSelection li.code-line:hover:before {
+	left: -30px;
+}
+
+.vscode-light.showEditorSelection .code-active-line:before {
+	border-left: 3px solid rgba(0, 0, 0, 0.15);
+}
+
+.vscode-light.showEditorSelection .code-line:hover:before {
+	border-left: 3px solid rgba(0, 0, 0, 0.40);
+}
+
+.vscode-light.showEditorSelection .code-line .code-line:hover:before {
+	border-left: none;
+}
+
+.vscode-dark.showEditorSelection .code-active-line:before {
+	border-left: 3px solid rgba(255, 255, 255, 0.4);
+}
+
+.vscode-dark.showEditorSelection .code-line:hover:before {
+	border-left: 3px solid rgba(255, 255, 255, 0.60);
+}
+
+.vscode-dark.showEditorSelection .code-line .code-line:hover:before {
+	border-left: none;
+}
+
+.vscode-high-contrast.showEditorSelection .code-active-line:before {
+	border-left: 3px solid rgba(255, 160, 0, 0.7);
+}
+
+.vscode-high-contrast.showEditorSelection .code-line:hover:before {
+	border-left: 3px solid rgba(255, 160, 0, 1);
+}
+
+.vscode-high-contrast.showEditorSelection .code-line .code-line:hover:before {
+	border-left: none;
+}
+
+img {
+	max-width: 100%;
+	max-height: 100%;
+}
+
+a {
+	text-decoration: none;
+}
+
+a:hover {
+	text-decoration: underline;
+}
+
+a:focus,
+input:focus,
+select:focus,
+textarea:focus {
+	outline: 1px solid -webkit-focus-ring-color;
+	outline-offset: -1px;
+}
+
+hr {
+	border: 0;
+	height: 2px;
+	border-bottom: 2px solid;
+}
+
+h1 {
+	padding-bottom: 0.3em;
+	line-height: 1.2;
+	border-bottom-width: 1px;
+	border-bottom-style: solid;
+}
+
+h1, h2, h3 {
+	font-weight: normal;
+}
+
+table {
+	border-collapse: collapse;
+}
+
+table > thead > tr > th {
+	text-align: left;
+	border-bottom: 1px solid;
+}
+
+table > thead > tr > th,
+table > thead > tr > td,
+table > tbody > tr > th,
+table > tbody > tr > td {
+	padding: 5px 10px;
+}
+
+table > tbody > tr + tr > td {
+	border-top: 1px solid;
+}
+
+blockquote {
+	margin: 0 7px 0 5px;
+	padding: 0 16px 0 10px;
+	border-left-width: 5px;
+	border-left-style: solid;
+}
+
+code {
+	font-family: Menlo, Monaco, Consolas, "Droid Sans Mono", "Courier New", monospace, "Droid Sans Fallback";
+	font-size: 1em;
+	line-height: 1.357em;
+}
+
+body.wordWrap pre {
+	white-space: pre-wrap;
+}
+
+pre:not(.hljs),
+pre.hljs code > div {
+	padding: 16px;
+	border-radius: 3px;
+	overflow: auto;
+}
+
+pre code {
+	color: var(--vscode-editor-foreground);
+	tab-size: 4;
+}
+
+/** Theming */
+
+.vscode-light pre {
+	background-color: rgba(220, 220, 220, 0.4);
+}
+
+.vscode-dark pre {
+	background-color: rgba(10, 10, 10, 0.4);
+}
+
+.vscode-high-contrast pre {
+	background-color: rgb(0, 0, 0);
+}
+
+.vscode-high-contrast h1 {
+	border-color: rgb(0, 0, 0);
+}
+
+.vscode-light table > thead > tr > th {
+	border-color: rgba(0, 0, 0, 0.69);
+}
+
+.vscode-dark table > thead > tr > th {
+	border-color: rgba(255, 255, 255, 0.69);
+}
+
+.vscode-light h1,
+.vscode-light hr,
+.vscode-light table > tbody > tr + tr > td {
+	border-color: rgba(0, 0, 0, 0.18);
+}
+
+.vscode-dark h1,
+.vscode-dark hr,
+.vscode-dark table > tbody > tr + tr > td {
+	border-color: rgba(255, 255, 255, 0.18);
+}
+
+</style>
+
+<style>
+/* Tomorrow Theme */
+/* http://jmblog.github.com/color-themes-for-google-code-highlightjs */
+/* Original theme - https://github.com/chriskempson/tomorrow-theme */
+
+/* Tomorrow Comment */
+.hljs-comment,
+.hljs-quote {
+	color: #8e908c;
+}
+
+/* Tomorrow Red */
+.hljs-variable,
+.hljs-template-variable,
+.hljs-tag,
+.hljs-name,
+.hljs-selector-id,
+.hljs-selector-class,
+.hljs-regexp,
+.hljs-deletion {
+	color: #c82829;
+}
+
+/* Tomorrow Orange */
+.hljs-number,
+.hljs-built_in,
+.hljs-builtin-name,
+.hljs-literal,
+.hljs-type,
+.hljs-params,
+.hljs-meta,
+.hljs-link {
+	color: #f5871f;
+}
+
+/* Tomorrow Yellow */
+.hljs-attribute {
+	color: #eab700;
+}
+
+/* Tomorrow Green */
+.hljs-string,
+.hljs-symbol,
+.hljs-bullet,
+.hljs-addition {
+	color: #718c00;
+}
+
+/* Tomorrow Blue */
+.hljs-title,
+.hljs-section {
+	color: #4271ae;
+}
+
+/* Tomorrow Purple */
+.hljs-keyword,
+.hljs-selector-tag {
+	color: #8959a8;
+}
+
+.hljs {
+	display: block;
+	overflow-x: auto;
+	color: #4d4d4c;
+	padding: 0.5em;
+}
+
+.hljs-emphasis {
+	font-style: italic;
+}
+
+.hljs-strong {
+	font-weight: bold;
+}
+</style>
+
+<style>
+/*
+ * Markdown PDF CSS
+ */
+
+ body {
+	font-family: -apple-system, BlinkMacSystemFont, "Segoe WPC", "Segoe UI", "Ubuntu", "Droid Sans", sans-serif, "Meiryo";
+	padding: 0 12px;
+}
+
+pre {
+	background-color: #f8f8f8;
+	border: 1px solid #cccccc;
+	border-radius: 3px;
+	overflow-x: auto;
+	white-space: pre-wrap;
+	overflow-wrap: break-word;
+}
+
+pre:not(.hljs) {
+	padding: 23px;
+	line-height: 19px;
+}
+
+blockquote {
+	background: rgba(127, 127, 127, 0.1);
+	border-color: rgba(0, 122, 204, 0.5);
+}
+
+.emoji {
+	height: 1.4em;
+}
+
+code {
+	font-size: 14px;
+	line-height: 19px;
+}
+
+/* for inline code */
+:not(pre):not(.hljs) > code {
+	color: #C9AE75; /* Change the old color so it seems less like an error */
+	font-size: inherit;
+}
+
+/* Page Break : use <div class="page"/> to insert page break
+-------------------------------------------------------- */
+.page {
+	page-break-after: always;
+}
+
+</style>
+
+<script src="https://unpkg.com/mermaid/dist/mermaid.min.js"></script>
+</head>
+<body>
+  <script>
+    mermaid.initialize({
+      startOnLoad: true,
+      theme: document.body.classList.contains('vscode-dark') || document.body.classList.contains('vscode-high-contrast')
+          ? 'dark'
+          : 'default'
+    });
+  </script>
+<h1 id="project-proposal"><strong>Project Proposal</strong></h1>
+<p><em>Professor Germain Garcia‑Zanabria</em>
+<em>Data Science Program — DS5343 • Data Visualization</em>
+<em>Final Project Guidelines</em></p>
+<hr>
+<h2 id="team">Team</h2>
+<ul>
+<li><strong>Camila Rodríguez</strong></li>
+<li><strong>Martín Pérez‑Bonany</strong></li>
+<li><strong>Diego Guerra</strong></li>
+</ul>
+<hr>
+<h2 id="objective">Objective</h2>
+<p>Leverage the synthetic <strong>VAST 2025 MC1 music‑influence graph</strong> to uncover how creative relationships (covers, samples, stylistic homage, collaborations) drive a song or album from obscurity to <em>notable</em> chart success. We will deliver an <strong>interactive, story‑driven visualization</strong> that allows users to trace these pathways and explore the ecosystem of musical influence.</p>
+<hr>
+<h2 id="possible-research-questions">Possible Research Questions</h2>
+<ol>
+<li><strong>Influence Propagation:</strong> How do different influence types (Cover Of, Directly Samples, In Style Of, etc.) spread across time and genre?</li>
+<li><strong>Collaboration &amp; Success:</strong> Which collaboration patterns between artists, producers, labels and groups correlate most with “notable” status?</li>
+<li><strong>Keystone Creators:</strong> Can we identify songs, albums, or people whose removal would fragment the influence network (high betweenness/bridging nodes)?</li>
+<li><strong>Genre Evolution Timeline:</strong> What temporal milestones mark genre shifts driven by cross‑influences and chart breakthroughs?</li>
+</ol>
+<hr>
+<h2 id="data--pre%E2%80%91processing-python">Data &amp; Pre‑processing (Python)</h2>
+<p>This part will be accomplished using Python and libraries such as pandas, networkx, numpy, scikit-network, matplotlib.</p>
+<hr>
+<h2 id="visualization-approach-js--d3-v7">Visualization Approach (JS + D3 v7)</h2>
+<table>
+<thead>
+<tr>
+<th>View</th>
+<th>Purpose</th>
+<th>Key Encodings</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Radial Influence Galaxy</strong></td>
+<td>Macro overview of the graph</td>
+<td>Radius → release year · Link hue → edge type</td>
+</tr>
+<tr>
+<td><strong>Collaboration Chord Diagram</strong></td>
+<td>Artist‑producer‑label triads</td>
+<td>Arc size → #works · Color → genre</td>
+</tr>
+<tr>
+<td><strong>Success Sankey</strong></td>
+<td>Pathways from creation ➜ chart notoriety</td>
+<td>Width → frequency · Node color → role</td>
+</tr>
+<tr>
+<td><strong>Timeline Heatmap</strong></td>
+<td>Genre popularity across years</td>
+<td>Color intensity → #notable hits</td>
+</tr>
+</tbody>
+</table>
+<p>Interactive features: hover tooltips, click‑to‑filter, animated transitions.</p>
+<hr>
+<h2 id="stack">Stack</h2>
+<ul>
+<li><strong>Python 3.11</strong> • <code>pandas</code>, <code>networkx</code>, <code>numpy</code>, <code>scikit‑network</code>,    <code>matplotlib</code></li>
+<li><strong>JavaScript</strong> • <strong>D3 v7</strong>.</li>
+</ul>
+<hr>
+<h2 id="visualizations">Visualizations</h2>
+<h3 id="timeline-heatmap-timelineheatmaphtml">Timeline Heatmap (<code>timeline_heatmap.html</code>)</h3>
+<p>An interactive timeline heatmap visualization that explores musical genre evolution over time, featuring a Spotify-inspired design aesthetic.</p>
+<h4 id="features">Features</h4>
+<p><strong>Data Representation</strong></p>
+<ul>
+<li><strong>Heatmap Matrix</strong>: Genres (Y-axis) × Time periods (X-axis)</li>
+<li><strong>Color Encoding</strong>: Activity intensity using Spotify-themed green color scale</li>
+<li><strong>Time Granularity</strong>: View by year, decade, or 5-year periods</li>
+<li><strong>Multiple Metrics</strong>: Total releases, notable works, success rate, or influence activity</li>
+</ul>
+<p><strong>Interactive Controls</strong></p>
+<ul>
+<li><strong>View Modes</strong>:
+<ul>
+<li>Total Releases: Shows all musical works released</li>
+<li>Notable Works: Filters to only chart-successful pieces</li>
+<li>Success Rate: Percentage of works that became notable</li>
+<li>Influence Activity: Sum of creative influences (samples, covers, etc.)</li>
+</ul>
+</li>
+<li><strong>Animation</strong>: Automated timeline playback with speed control</li>
+<li><strong>Genre Selection</strong>: Adjustable number of top genres to display (5-20)</li>
+<li><strong>Click Interactions</strong>: Click genre labels to highlight specific genres</li>
+</ul>
+<p><strong>Rich Tooltips</strong>
+Hover over any cell to see:</p>
+<ul>
+<li>Genre and time period information</li>
+<li>Current metric value with context</li>
+<li>Comprehensive statistics (total works, notable works, influences, success rate)</li>
+<li>Top works in that genre/period with influence indicators</li>
+</ul>
+<h3 id="collaboration-chord-diagram-collaborationchordhtml">Collaboration Chord Diagram (<code>collaboration_chord.html</code>)</h3>
+<p>An interactive chord diagram visualization showcasing artist-producer-label collaboration triads within the musical influence network, featuring Spotify-inspired aesthetics and comprehensive filtering capabilities.</p>
+<h4 id="features">Features</h4>
+<p><strong>Data Representation</strong></p>
+<ul>
+<li><strong>Chord Layout</strong>: D3's chord diagram displaying collaboration matrices between entities</li>
+<li><strong>Arc Size Encoding</strong>: Entity arc size represents total number of works produced</li>
+<li><strong>Color Encoding</strong>: Genre-based color scheme using Spotify green variations</li>
+<li><strong>Entity Types</strong>: Artists/People, Producers, and Record Labels with distinct visual styling</li>
+<li><strong>Matrix Analysis</strong>: Top 20 entities by work count to ensure readability</li>
+</ul>
+<p><strong>Interactive Controls</strong></p>
+<ul>
+<li><strong>Genre Filtering</strong>: Focus on specific genres while preserving collaboration context</li>
+<li><strong>Collaboration Strength</strong>: Filter by strong (5+ works), medium (2-4 works), or weak (1 work) collaborations</li>
+<li><strong>Work Count Slider</strong>: Adjustable minimum works threshold (1-10)</li>
+<li><strong>Opacity Control</strong>: Customize chord ribbon transparency for better visibility</li>
+<li><strong>Label Toggle</strong>: Show/hide entity names around the diagram</li>
+<li><strong>Notable Works Filter</strong>: Focus on entities involved in chart-successful works</li>
+</ul>
+<p><strong>Rich Interactions</strong></p>
+<ul>
+<li><strong>Entity Tooltips</strong>: Hover over arcs to see role, genre, work count, collaboration details, and notable status</li>
+<li><strong>Collaboration Tooltips</strong>: Hover over ribbons to see detailed collaboration information between entities</li>
+<li><strong>Genre Tags</strong>: Quick-filter buttons for top genres in the sidebar legend</li>
+<li><strong>Visual Highlighting</strong>: Chord ribbons highlight on hover with stroke effects</li>
+</ul>
+<p><strong>Live Statistics</strong></p>
+<ul>
+<li><strong>Active Triads</strong>: Current number of entities displayed</li>
+<li><strong>Total Works</strong>: Aggregate work count across filtered entities</li>
+<li><strong>Dominant Genre</strong>: Most prominent genre by work volume in current view</li>
+</ul>
+
+</body>
+</html>

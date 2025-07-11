@@ -1,0 +1,1017 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Collaboration Chord Diagram</title>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #0c0c0c 0%, #1a1a2e 50%, #0f0f0f 100%);
+            color: #ffffff;
+            overflow: hidden;
+        }
+
+        #container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #1DB954 0%, #158A3A 100%);
+            padding: 15px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+            z-index: 1000;
+        }
+
+        .title {
+            font-size: 24px;
+            font-weight: bold;
+            color: #fff;
+        }
+
+        .subtitle {
+            font-size: 14px;
+            color: rgba(255,255,255,0.8);
+            margin-left: 10px;
+        }
+
+        .main-content {
+            flex: 1;
+            display: flex;
+        }
+
+        #visualization {
+            flex: 1;
+            position: relative;
+            background: radial-gradient(circle at center, rgba(102, 126, 234, 0.05) 0%, rgba(0,0,0,0.2) 70%);
+        }
+
+        .controls {
+            width: 300px;
+            background: rgba(0, 0, 0, 0.9);
+            padding: 20px;
+            backdrop-filter: blur(10px);
+            border-left: 1px solid #333;
+            overflow-y: auto;
+        }
+
+        .control-group {
+            margin-bottom: 20px;
+        }
+
+        .control-group label {
+            display: block;
+            font-size: 12px;
+            color: #ccc;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            font-weight: 600;
+        }
+
+        .control-group select, .control-group input {
+            width: 100%;
+            padding: 10px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid #555;
+            border-radius: 5px;
+            color: #fff;
+            font-size: 14px;
+            transition: all 0.3s ease;
+        }
+
+        .control-group select:focus, .control-group input:focus {
+            outline: none;
+            border-color: #1DB954;
+            box-shadow: 0 0 0 2px rgba(29, 185, 84, 0.2);
+        }
+
+        .control-group input[type="range"] {
+            background: transparent;
+            accent-color: #1DB954;
+        }
+
+        .control-group input[type="checkbox"] {
+            width: auto;
+            margin-right: 10px;
+            accent-color: #1DB954;
+        }
+
+        .tooltip {
+            position: absolute;
+            background: rgba(0, 0, 0, 0.95);
+            border: 1px solid #1DB954;
+            border-radius: 8px;
+            padding: 12px;
+            pointer-events: none;
+            z-index: 1001;
+            font-size: 12px;
+            line-height: 1.4;
+            max-width: 300px;
+            backdrop-filter: blur(15px);
+            box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+        }
+
+        .tooltip h3 {
+            margin: 0 0 8px 0;
+            color: #1DB954;
+            font-size: 14px;
+            font-weight: bold;
+        }
+
+        .stats {
+            background: rgba(0, 0, 0, 0.5);
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-size: 12px;
+            line-height: 1.6;
+            border: 1px solid rgba(29, 185, 84, 0.2);
+        }
+
+        .legend {
+            background: rgba(0, 0, 0, 0.5);
+            padding: 15px;
+            border-radius: 8px;
+            font-size: 11px;
+            border: 1px solid rgba(102, 126, 234, 0.2);
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            margin: 8px 0;
+        }
+
+        .legend-color {
+            width: 15px;
+            height: 15px;
+            margin-right: 10px;
+            border-radius: 3px;
+            border: 1px solid rgba(255,255,255,0.3);
+        }
+
+        .loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            z-index: 1002;
+            color: 1DB954;;
+        }
+
+        .loading-spinner {
+            border: 3px solid rgba(102, 126, 234, 0.3);
+            border-top: 3px solid 1DB954;;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .btn {
+            width: 100%;
+            background: linear-gradient(135deg, #1DB954 0%, #158A3A 100%);
+            border: none;
+            color: white;
+            padding: 10px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.3s ease;
+            margin-bottom: 10px;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(29, 185, 84, 0.4);
+        }
+
+        .metric-box {
+            background: rgba(29, 185, 84, 0.15);
+            padding: 12px;
+            border-radius: 6px;
+            margin: 8px 0;
+            text-align: center;
+            border: 1px solid rgba(29, 185, 84, 0.3);
+        }
+
+        .metric-value {
+            font-size: 20px;
+            font-weight: bold;
+            color: 1DB954;;
+            display: block;
+        }
+
+        .metric-label {
+            font-size: 10px;
+            color: #ccc;
+            text-transform: uppercase;
+            margin-top: 4px;
+        }
+
+        /* Chord diagram specific styles */
+        .chord-group {
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .chord-group:hover {
+            opacity: 0.8;
+        }
+
+        .chord-ribbon {
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .chord-ribbon:hover {
+            opacity: 0.9;
+            stroke: #fff;
+            stroke-width: 1px;
+        }
+
+        .chord-label {
+            font-size: 11px;
+            font-weight: 600;
+            fill: #fff;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.8);
+            pointer-events: none;
+        }
+
+        .genre-filter {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 5px;
+            margin-top: 10px;
+        }
+
+        .genre-tag {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 10px;
+            cursor: pointer;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            transition: all 0.3s ease;
+        }
+
+        .genre-tag:hover {
+            background: rgba(29, 185, 84, 0.3);
+            border-color: #1DB954;
+        }
+
+        .genre-tag.active {
+            background: #1DB954;
+            border-color: #1DB954;
+            color: #fff;
+        }
+    </style>
+</head>
+<body>
+    <div id="container">
+        <div class="loading" id="loading">
+            <div class="loading-spinner"></div>
+            <div>Loading Collaboration Data...</div>
+        </div>
+
+        <div class="header">
+            <div>
+                <span class="title">Collaboration Chord Diagram</span>
+                <span class="subtitle">Artist-Producer-Label Triads</span>
+            </div>
+            <div style="font-size: 12px; color: rgba(255,255,255,0.7);">
+                Arc size → #works • Color → genre
+            </div>
+        </div>
+
+        <div class="main-content">
+            <div id="visualization">
+                <svg id="chord-svg"></svg>
+                <div class="tooltip" id="tooltip" style="display: none;"></div>
+            </div>
+
+            <div class="controls">
+                <h3 style="margin-top: 0; color: 1DB954;; font-size: 18px;">Chord Controls</h3>
+                
+                <div class="stats" id="stats">
+                    <strong style="color: 1DB954;;">Collaboration Overview</strong>
+                    <div class="metric-box">
+                        <div class="metric-value" id="totalTriads">-</div>
+                        <div class="metric-label">Active Triads</div>
+                    </div>
+                    <div class="metric-box">
+                        <div class="metric-value" id="totalWorks">-</div>
+                        <div class="metric-label">Total Works</div>
+                    </div>
+                    <div class="metric-box">
+                        <div class="metric-value" id="dominantGenre">-</div>
+                        <div class="metric-label">Dominant Genre</div>
+                    </div>
+                </div>
+
+                <div class="control-group">
+                    <label>Focus Genre</label>
+                    <select id="genreFilter">
+                        <option value="all">All Genres</option>
+                    </select>
+                </div>
+
+                <div class="control-group">
+                    <label>Collaboration Strength</label>
+                    <select id="strengthFilter">
+                        <option value="all">All Collaborations</option>
+                        <option value="strong">Strong (5+ works)</option>
+                        <option value="medium">Medium (2-4 works)</option>
+                        <option value="weak">Weak (1 work)</option>
+                    </select>
+                </div>
+
+                <div class="control-group">
+                    <label>Min Works: <span id="minWorksValue">1</span></label>
+                    <input type="range" id="minWorks" min="1" max="10" value="1">
+                </div>
+
+                <div class="control-group">
+                    <label>Chord Opacity: <span id="opacityValue">0.7</span></label>
+                    <input type="range" id="chordOpacity" min="0.3" max="1" step="0.1" value="0.7">
+                </div>
+
+                <div class="control-group">
+                    <label>
+                        <input type="checkbox" id="showLabels" checked>
+                        Show Entity Labels
+                    </label>
+                </div>
+
+                <div class="control-group">
+                    <label>
+                        <input type="checkbox" id="showNotableOnly">
+                        Notable Works Only
+                    </label>
+                </div>
+
+                <div class="control-group">
+                    <button class="btn" onclick="resetChord()">Reset Filters</button>
+                </div>
+
+                <div class="legend">
+                    <strong style="color: 1DB954;;">Top Genres</strong>
+                    <div class="genre-filter" id="topGenres">
+                        <!-- Populated dynamically -->
+                    </div>
+                    
+                    <div style="margin-top: 15px;">
+                        <strong style="color: 1DB954;;">Entity Types</strong>
+                        <div class="legend-item">
+                            <div class="legend-color" style="background: #ff6b6b;"></div>
+                            <span>Artists/People</span>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-color" style="background: #4ecdc4;"></div>
+                            <span>Producers</span>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-color" style="background: #96ceb4;"></div>
+                            <span>Record Labels</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Configuration
+        const config = {
+            genreColors: {
+                'Dream Pop': '#FF6B9D',
+                'Indie Folk': '#4ECDC4', 
+                'Synthwave': '#45B7D1',
+                'Doom Metal': '#96CEB4',
+                'Oceanus Folk': '#FECA57',
+                'Indie Rock': '#FF8C42',
+                'Ambient': '#A8E6CF',
+                'Electronic': '#7209B7',
+                'Folk': '#52B788',
+                'Rock': '#F72585'
+            },
+            roleColors: {
+                'artist': '#ff6b6b',
+                'producer': '#4ecdc4',
+                'label': '#96ceb4'
+            }
+        };
+
+        // Global variables
+        let svg, g, tooltip;
+        let data = { nodes: [], links: [] };
+        let chordData = { entities: [], matrix: [], genres: new Map() };
+        let filteredChordData = { entities: [], matrix: [], genres: new Map() };
+
+        // Initialize visualization
+        async function init() {
+            try {
+                console.log('Loading collaboration chord data...');
+                
+                // Load data files
+                const graphData = await d3.json('MC1_graph.json');
+                const songsData = await d3.csv('songs_albums_analysis.csv');
+                
+                console.log('Data loaded:', graphData.nodes?.length, 'nodes,', graphData.links?.length, 'links');
+                
+                // Process data
+                processChordData(graphData, songsData);
+                
+                // Setup SVG
+                setupSVG();
+                
+                // Setup controls
+                setupControls();
+                
+                // Initial render
+                updateVisualization();
+                
+                // Hide loading
+                document.getElementById('loading').style.display = 'none';
+                
+            } catch (error) {
+                console.error('Error loading data:', error);
+                document.getElementById('loading').innerHTML = 
+                    '<div>Error loading data. Please check the console and ensure data files are available.</div>';
+            }
+        }
+
+        function processChordData(graphData, songsData) {
+            console.log('Processing chord diagram data...');
+            
+            // Error handling for data loading
+            if (!graphData || !graphData.nodes || !graphData.links) {
+                console.error('Invalid graph data format:', graphData);
+                document.getElementById('loading').innerHTML = 
+                    '<div>Error: Invalid graph data format. Please check the data files.</div>';
+                return;
+            }
+            
+            if (!Array.isArray(songsData)) {
+                console.error('Invalid songs data format:', songsData);
+                document.getElementById('loading').innerHTML = 
+                    '<div>Error: Invalid songs data format. Please check the data files.</div>';
+                return;
+            }
+            
+            // Create lookup for songs data
+            const songsLookup = new Map();
+            songsData.forEach(d => {
+                songsLookup.set(d.id, d);
+            });
+
+            // Find all works (songs/albums) and their collaborators
+            const works = graphData.nodes.filter(n => n['Node Type'] === 'Song' || n['Node Type'] === 'Album');
+            console.log('Found', works.length, 'works');
+
+            // Build collaboration relationships
+            const collaborations = new Map(); // key: "entity1|entity2", value: {count, genres: Set()}
+            const entityInfo = new Map(); // entity -> {name, role, genre, workCount}
+            const entityWorkCounts = new Map(); // entity -> number of works
+            
+            works.forEach(work => {
+                const workGenre = work.genre || songsLookup.get(work.id)?.genre || 'Unknown';
+                const workNotable = work.notable || false;
+                
+                // Find all people/entities connected to this work
+                const workCollaborators = {
+                    artists: new Set(),
+                    producers: new Set(),
+                    labels: new Set()
+                };
+                
+                graphData.links.forEach(link => {
+                    if ((link.source === work.id || link.target === work.id)) {
+                        let connectedNodeId = null;
+                        let isWorkSource = link.source === work.id;
+                        
+                        if (isWorkSource) {
+                            connectedNodeId = link.target;
+                        } else {
+                            connectedNodeId = link.source;
+                        }
+                        
+                        const connectedNode = graphData.nodes.find(n => n.id === connectedNodeId);
+                        if (!connectedNode) return;
+                        
+                        const entityName = connectedNode.name || connectedNode.id;
+                        
+                        // Categorize by relationship type and node type
+                        if (link['Edge Type'] === 'PerformerOf' || 
+                            connectedNode['Node Type'] === 'Person' || 
+                            connectedNode['Node Type'] === 'MusicalGroup') {
+                            workCollaborators.artists.add(entityName);
+                            entityInfo.set(entityName, {
+                                name: entityName,
+                                role: 'artist',
+                                genre: workGenre,
+                                notable: workNotable
+                            });
+                        } else if (link['Edge Type'] === 'ProducerOf' || 
+                                   link['Edge Type'] === 'ComposerOf') {
+                            workCollaborators.producers.add(entityName);
+                            entityInfo.set(entityName, {
+                                name: entityName,
+                                role: 'producer',
+                                genre: workGenre,
+                                notable: workNotable
+                            });
+                        } else if (connectedNode['Node Type'] === 'RecordLabel' || 
+                                   link['Edge Type'] === 'RecordedBy' ||
+                                   link['Edge Type'] === 'DistributedBy') {
+                            workCollaborators.labels.add(entityName);
+                            entityInfo.set(entityName, {
+                                name: entityName,
+                                role: 'label',
+                                genre: workGenre,
+                                notable: workNotable
+                            });
+                        }
+                    }
+                });
+                
+                // Count works per entity
+                [...workCollaborators.artists, ...workCollaborators.producers, ...workCollaborators.labels]
+                    .forEach(entity => {
+                        entityWorkCounts.set(entity, (entityWorkCounts.get(entity) || 0) + 1);
+                    });
+                
+                // Create collaboration pairs within this work
+                const allCollaborators = [
+                    ...Array.from(workCollaborators.artists),
+                    ...Array.from(workCollaborators.producers),
+                    ...Array.from(workCollaborators.labels)
+                ];
+                
+                // Create collaboration matrix entries
+                for (let i = 0; i < allCollaborators.length; i++) {
+                    for (let j = i + 1; j < allCollaborators.length; j++) {
+                        const entity1 = allCollaborators[i];
+                        const entity2 = allCollaborators[j];
+                        const key = entity1 < entity2 ? `${entity1}|${entity2}` : `${entity2}|${entity1}`;
+                        
+                        if (!collaborations.has(key)) {
+                            collaborations.set(key, {
+                                count: 0,
+                                genres: new Set()
+                            });
+                        }
+                        
+                        const collab = collaborations.get(key);
+                        collab.count++;
+                        collab.genres.add(workGenre);
+                    }
+                }
+            });
+            
+            // Select top entities by work count
+            const topEntities = Array.from(entityWorkCounts.entries())
+                .sort((a, b) => b[1] - a[1])
+                .slice(0, 20) // Limit for readability
+                .map(([entity, count]) => {
+                    const info = entityInfo.get(entity);
+                    return {
+                        name: entity,
+                        role: info?.role || 'unknown',
+                        genre: info?.genre || 'Unknown',
+                        workCount: count,
+                        notable: info?.notable || false
+                    };
+                });
+            
+            console.log('Selected', topEntities.length, 'top entities');
+            
+            // Build matrix for chord diagram
+            const entityNames = topEntities.map(e => e.name);
+            const matrix = Array(entityNames.length).fill().map(() => Array(entityNames.length).fill(0));
+            const genreMap = new Map();
+            
+            topEntities.forEach((entity, i) => {
+                genreMap.set(entity.name, entity.genre);
+            });
+            
+            collaborations.forEach((collab, key) => {
+                const [entity1, entity2] = key.split('|');
+                const idx1 = entityNames.indexOf(entity1);
+                const idx2 = entityNames.indexOf(entity2);
+                
+                if (idx1 !== -1 && idx2 !== -1) {
+                    matrix[idx1][idx2] = collab.count;
+                    matrix[idx2][idx1] = collab.count;
+                }
+            });
+            
+            chordData = {
+                entities: topEntities,
+                matrix: matrix,
+                genres: genreMap
+            };
+            
+            console.log('Chord data processed:', chordData.entities.length, 'entities');
+            
+            // Populate genre filter
+            const genres = [...new Set(topEntities.map(e => e.genre))].sort();
+            const genreSelect = document.getElementById('genreFilter');
+            genres.forEach(genre => {
+                const option = document.createElement('option');
+                option.value = genre;
+                option.textContent = genre;
+                genreSelect.appendChild(option);
+            });
+            
+            // Populate top genres in legend
+            const topGenres = Object.keys(config.genreColors);
+            const topGenresDiv = document.getElementById('topGenres');
+            topGenres.forEach(genre => {
+                const tag = document.createElement('div');
+                tag.className = 'genre-tag';
+                tag.textContent = genre;
+                tag.style.backgroundColor = config.genreColors[genre];
+                tag.style.color = '#fff';
+                tag.onclick = () => filterByGenre(genre);
+                topGenresDiv.appendChild(tag);
+            });
+            
+            updateStats();
+        }
+
+        function setupSVG() {
+            const container = document.getElementById('visualization');
+            const width = container.clientWidth;
+            const height = container.clientHeight;
+
+            svg = d3.select('#chord-svg')
+                .attr('width', width)
+                .attr('height', height);
+
+            g = svg.append('g')
+                .attr('transform', `translate(${width / 2}, ${height / 2})`);
+
+            tooltip = d3.select('#tooltip');
+        }
+
+        function setupControls() {
+            // Genre filter
+            document.getElementById('genreFilter').addEventListener('change', updateVisualization);
+            
+            // Strength filter
+            document.getElementById('strengthFilter').addEventListener('change', updateVisualization);
+            
+            // Min works slider
+            const minWorksSlider = document.getElementById('minWorks');
+            minWorksSlider.addEventListener('input', (e) => {
+                document.getElementById('minWorksValue').textContent = e.target.value;
+                updateVisualization();
+            });
+            
+            // Opacity slider
+            const opacitySlider = document.getElementById('chordOpacity');
+            opacitySlider.addEventListener('input', (e) => {
+                document.getElementById('opacityValue').textContent = e.target.value;
+                updateVisualization();
+            });
+            
+            // Checkboxes
+            document.getElementById('showLabels').addEventListener('change', updateVisualization);
+            document.getElementById('showNotableOnly').addEventListener('change', updateVisualization);
+        }
+
+        function getFilteredData() {
+            const filters = {
+                genre: document.getElementById('genreFilter').value,
+                strength: document.getElementById('strengthFilter').value,
+                minWorks: parseInt(document.getElementById('minWorks').value),
+                showNotableOnly: document.getElementById('showNotableOnly').checked
+            };
+
+            let entities = [...chordData.entities];
+            let matrix = chordData.matrix.map(row => [...row]);
+
+            // Apply genre filter - improved to preserve connections to other genres
+            let filteredEntities = [...entities];
+            
+            if (filters.genre !== 'all') {
+                // First, get all entities of the selected genre
+                const genreEntities = entities.filter(e => e.genre === filters.genre);
+                
+                // Then find all entities that collaborate with the selected genre
+                const collaborators = new Set();
+                
+                // For each entity of the selected genre
+                for (const genreEntity of genreEntities) {
+                    const entityIndex = chordData.entities.findIndex(e => e.name === genreEntity.name);
+                    
+                    // Find all its collaborators
+                    for (let j = 0; j < chordData.entities.length; j++) {
+                        // If there's a collaboration between these entities
+                        if (chordData.matrix[entityIndex][j] > 0) {
+                            const collaborator = chordData.entities[j];
+                            // Add the collaborator if it passes other filters
+                            const passesNotable = !filters.showNotableOnly || collaborator.notable;
+                            const passesMinWorks = collaborator.workCount >= filters.minWorks;
+                            
+                            if (passesNotable && passesMinWorks) {
+                                collaborators.add(collaborator.name);
+                            }
+                        }
+                    }
+                }
+                
+                // Filter entities to only include those of the selected genre or their collaborators
+                entities = entities.filter(e => 
+                    e.genre === filters.genre || collaborators.has(e.name)
+                );
+            }
+
+            // Apply notable filter
+            if (filters.showNotableOnly) {
+                entities = entities.filter(e => e.notable);
+            }
+
+            // Apply minimum works filter
+            entities = entities.filter(e => e.workCount >= filters.minWorks);
+
+            // Rebuild matrix for filtered entities
+            const entityNames = entities.map(e => e.name);
+            const newMatrix = Array(entities.length).fill().map(() => Array(entities.length).fill(0));
+
+            for (let i = 0; i < entities.length; i++) {
+                for (let j = 0; j < entities.length; j++) {
+                    const originalI = chordData.entities.findIndex(e => e.name === entities[i].name);
+                    const originalJ = chordData.entities.findIndex(e => e.name === entities[j].name);
+                    
+                    if (originalI !== -1 && originalJ !== -1) {
+                        newMatrix[i][j] = chordData.matrix[originalI][originalJ];
+                    }
+                }
+            }
+
+            // Apply strength filter
+            if (filters.strength !== 'all') {
+                for (let i = 0; i < newMatrix.length; i++) {
+                    for (let j = 0; j < newMatrix[i].length; j++) {
+                        const value = newMatrix[i][j];
+                        let keep = false;
+                        
+                        if (filters.strength === 'strong' && value >= 5) keep = true;
+                        else if (filters.strength === 'medium' && value >= 2 && value <= 4) keep = true;
+                        else if (filters.strength === 'weak' && value === 1) keep = true;
+                        else if (filters.strength === 'all') keep = true;
+                        
+                        if (!keep) {
+                            newMatrix[i][j] = 0;
+                        }
+                    }
+                }
+            }
+
+            return {
+                entities: entities,
+                matrix: newMatrix,
+                genres: chordData.genres
+            };
+        }
+
+        function updateVisualization() {
+            filteredChordData = getFilteredData();
+            renderChordDiagram();
+            updateStats();
+        }
+
+        function renderChordDiagram() {
+            console.log('Rendering chord diagram with', filteredChordData.entities.length, 'entities');
+            
+            // Clear existing elements
+            g.selectAll('*').remove();
+
+            if (filteredChordData.entities.length === 0) {
+                g.append('text')
+                    .attr('text-anchor', 'middle')
+                    .style('fill', '#666')
+                    .style('font-size', '16px')
+                    .text('No collaborations match current filters');
+                return;
+            }
+
+            const width = +svg.attr('width');
+            const height = +svg.attr('height');
+            const radius = Math.min(width, height) * 0.35;
+            const chordOpacity = parseFloat(document.getElementById('chordOpacity').value);
+
+            // Create chord layout
+            const chord = d3.chord()
+                .padAngle(0.02)
+                .sortSubgroups(d3.descending);
+
+            const arc = d3.arc()
+                .innerRadius(radius)
+                .outerRadius(radius + 20);
+
+            const ribbon = d3.ribbon()
+                .radius(radius);
+
+            const chords = chord(filteredChordData.matrix);
+
+            // Color function based on genre
+            const getEntityColor = (entityIndex) => {
+                const entity = filteredChordData.entities[entityIndex];
+                const genre = entity.genre;
+                return config.genreColors[genre] || config.roleColors[entity.role] || '#666';
+            };
+
+            // Add group arcs (entities)
+            const group = g.selectAll('.chord-group')
+                .data(chords.groups)
+                .enter().append('g')
+                .attr('class', 'chord-group');
+
+            group.append('path')
+                .style('fill', (d, i) => getEntityColor(i))
+                .style('stroke', '#fff')
+                .style('stroke-width', 1)
+                .attr('d', arc)
+                .on('mouseover', (event, d) => {
+                    const entity = filteredChordData.entities[d.index];
+                    showTooltip(event, {
+                        title: entity.name,
+                        content: `
+                            <div><strong>Role:</strong> ${entity.role.charAt(0).toUpperCase() + entity.role.slice(1)}</div>
+                            <div><strong>Genre:</strong> ${entity.genre}</div>
+                            <div><strong>Works:</strong> ${entity.workCount}</div>
+                            <div><strong>Collaborations:</strong> ${d.value}</div>
+                            <div><strong>Notable:</strong> ${entity.notable ? 'Yes' : 'No'}</div>
+                        `
+                    });
+                })
+                .on('mouseout', hideTooltip);
+
+            // Add entity labels
+            if (document.getElementById('showLabels').checked) {
+                group.append('text')
+                    .each(d => { d.angle = (d.startAngle + d.endAngle) / 2; })
+                    .attr('dy', '0.35em')
+                    .attr('transform', d => {
+                        const angle = d.angle * 180 / Math.PI - 90;
+                        const flip = d.angle > Math.PI;
+                        return `
+                            rotate(${angle})
+                            translate(${radius + 30})
+                            ${flip ? 'rotate(180)' : ''}
+                        `;
+                    })
+                    .style('text-anchor', d => d.angle > Math.PI ? 'end' : 'start')
+                    .attr('class', 'chord-label')
+                    .text((d, i) => {
+                        const name = filteredChordData.entities[i].name;
+                        return name.length > 12 ? name.substring(0, 12) + '...' : name;
+                    });
+            }
+
+            // Add collaboration ribbons
+            g.selectAll('.chord-ribbon')
+                .data(chords)
+                .enter().append('path')
+                .attr('class', 'chord-ribbon')
+                .style('fill', d => {
+                    // Color based on dominant genre
+                    const sourceColor = getEntityColor(d.source.index);
+                    return sourceColor;
+                })
+                .style('opacity', chordOpacity)
+                .style('stroke', 'none')
+                .attr('d', ribbon)
+                .on('mouseover', (event, d) => {
+                    const source = filteredChordData.entities[d.source.index];
+                    const target = filteredChordData.entities[d.target.index];
+                    
+                    showTooltip(event, {
+                        title: `${source.name} ↔ ${target.name}`,
+                        content: `
+                            <div><strong>Collaborations:</strong> ${d.source.value}</div>
+                            <div><strong>Source:</strong> ${source.role} (${source.genre})</div>
+                            <div><strong>Target:</strong> ${target.role} (${target.genre})</div>
+                            <div><strong>Combined Works:</strong> ${source.workCount + target.workCount}</div>
+                        `
+                    });
+                    
+                    // Highlight this chord
+                    d3.select(event.target)
+                        .style('opacity', Math.min(1, chordOpacity + 0.3))
+                        .style('stroke', '#fff')
+                        .style('stroke-width', 1);
+                })
+                .on('mouseout', (event, d) => {
+                    hideTooltip();
+                    d3.select(event.target)
+                        .style('opacity', chordOpacity)
+                        .style('stroke', 'none');
+                });
+
+            console.log('Chord diagram rendered with', chords.length, 'collaboration chords');
+        }
+
+        function showTooltip(event, data) {
+            tooltip
+                .style('display', 'block')
+                .style('left', (event.pageX + 10) + 'px')
+                .style('top', (event.pageY + 10) + 'px')
+                .html(`
+                    <h3>${data.title}</h3>
+                    ${data.content}
+                `);
+        }
+
+        function hideTooltip() {
+            tooltip.style('display', 'none');
+        }
+
+        function filterByGenre(genre) {
+            document.getElementById('genreFilter').value = genre;
+            updateVisualization();
+            
+            // Update active genre tag
+            document.querySelectorAll('.genre-tag').forEach(tag => {
+                tag.classList.toggle('active', tag.textContent === genre);
+            });
+        }
+
+        function resetChord() {
+            // Reset all filters
+            document.getElementById('genreFilter').value = 'all';
+            document.getElementById('strengthFilter').value = 'all';
+            document.getElementById('minWorks').value = '1';
+            document.getElementById('minWorksValue').textContent = '1';
+            document.getElementById('chordOpacity').value = '0.7';
+            document.getElementById('opacityValue').textContent = '0.7';
+            document.getElementById('showLabels').checked = true;
+            document.getElementById('showNotableOnly').checked = false;
+            
+            // Reset genre tags
+            document.querySelectorAll('.genre-tag').forEach(tag => {
+                tag.classList.remove('active');
+            });
+            
+            updateVisualization();
+        }
+
+        function updateStats() {
+            if (!filteredChordData) return;
+            
+            const totalTriads = filteredChordData.entities.length;
+            const totalWorks = d3.sum(filteredChordData.entities, e => e.workCount);
+            
+            // Find dominant genre
+            const genreCounts = {};
+            filteredChordData.entities.forEach(e => {
+                genreCounts[e.genre] = (genreCounts[e.genre] || 0) + e.workCount;
+            });
+            
+            const dominantGenre = Object.entries(genreCounts)
+                .sort((a, b) => b[1] - a[1])[0]?.[0] || 'None';
+            
+            document.getElementById('totalTriads').textContent = totalTriads;
+            document.getElementById('totalWorks').textContent = totalWorks.toLocaleString();
+            document.getElementById('dominantGenre').textContent = 
+                dominantGenre.length > 12 ? dominantGenre.substring(0, 12) + '...' : dominantGenre;
+        }
+
+        // Handle window resize
+        window.addEventListener('resize', () => {
+            const container = document.getElementById('visualization');
+            const width = container.clientWidth;
+            const height = container.clientHeight;
+            
+            svg.attr('width', width).attr('height', height);
+            g.attr('transform', `translate(${width / 2}, ${height / 2})`);
+            
+            renderChordDiagram();
+        });
+
+        // Initialize on load
+        window.addEventListener('load', init);
+    </script>
+</body>
+</html>

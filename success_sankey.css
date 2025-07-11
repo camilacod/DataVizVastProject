@@ -1,0 +1,81 @@
+body {
+    margin: 0;
+    padding: 0;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background: linear-gradient(135deg, #2c1810 0%, #8b4513 100%);
+    color: #fff;
+    overflow: hidden;
+}
+#container {
+    display: block;
+    min-height: 0;
+    height: auto;
+    width: 100vw;
+}
+#visualization {
+    width: 100%;
+    max-width: 1000px;
+    margin: 0 auto;
+    min-height: 250px;
+    padding: 0;
+}
+#sankey-svg {
+    width: 100%;
+    height: 350px;
+    display: block;
+}
+#oceanusfolk-timeline, #oceanusfolk-timeline-inward {
+    max-width: 1000px;
+    margin: 20px auto 10px auto;
+    min-height: 220px;
+    height: 220px;
+    padding: 0;
+}
+.controls {
+    width: 320px;
+    background: rgba(0,0,0,0.85);
+    padding: 20px;
+    border-left: 1px solid #444;
+    overflow-y: auto;
+}
+.control-group { margin-bottom: 20px; }
+.control-group label { font-size: 12px; color: #ddd; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 1px; }
+.control-group select, .control-group input[type="range"] {
+    width: 100%;
+    padding: 10px;
+    background: rgba(255,255,255,0.1);
+    border: 1px solid #666;
+    border-radius: 5px;
+    color: #fff;
+    font-size: 14px;
+}
+.control-group input[type="checkbox"] { width: auto; margin-right: 10px; }
+.tooltip {
+    position: absolute;
+    background: rgba(0,0,0,0.9);
+    border: 1px solid #888;
+    border-radius: 8px;
+    padding: 15px;
+    pointer-events: none;
+    z-index: 1001;
+    font-size: 12px;
+    line-height: 1.5;
+    max-width: 350px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+}
+.tooltip h3 { margin: 0 0 10px 0; color: #ffd700; font-size: 16px; }
+.stats { background: rgba(0,0,0,0.4); padding: 15px; border-radius: 8px; margin-bottom: 20px; font-size: 12px; }
+.metric-box { background: linear-gradient(135deg, rgba(255,215,0,0.2) 0%, rgba(255,107,53,0.2) 100%); padding: 12px; border-radius: 8px; margin: 8px 0; text-align: center; border: 1px solid rgba(255,215,0,0.3); }
+.metric-value { font-size: 20px; font-weight: bold; color: #ffd700; }
+.metric-label { font-size: 10px; color: #ccc; text-transform: uppercase; margin-top: 4px; }
+.section-title { color: #ffd700; font-size: 14px; font-weight: bold; margin-bottom: 10px; text-transform: uppercase; letter-spacing: 1px; }
+.loading { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center; z-index: 1002; }
+.loading-spinner { border: 3px solid #444; border-top: 3px solid #ffd700; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin: 0 auto 20px; }
+@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+.node rect { cursor: pointer; stroke: #000; stroke-width: 1px; }
+.node text { pointer-events: none; text-shadow: 0 1px 0 #000; font-size: 11px; font-weight: bold; }
+.link { stroke-opacity: 0.7; cursor: pointer; }
+.link:hover { stroke-opacity: 1; }
+.node:hover rect { stroke-width: 2px; stroke: #ffd700; }
+.btn { width: 100%; padding: 12px; background: linear-gradient(45deg, #ff6b35 0%, #f7931e 100%); border: none; border-radius: 6px; color: #fff; cursor: pointer; font-size: 14px; font-weight: bold; transition: all 0.3s ease; margin-bottom: 10px; }
+.btn:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(255,107,53,0.4); } 
