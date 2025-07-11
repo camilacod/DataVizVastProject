@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sailor Shift Network</title>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <link rel="stylesheet" href="sailor_simple_network.css">
+</head>
+<body>
+    <div class="controls">
+        <button id="collaborations-btn" class="view-btn active">Colaboraciones</button>
+        <button id="influences-btn" class="view-btn">Influencias</button>
+        <button id="highlight-artists-btn" class="highlight-btn">🎤 Resaltar Artistas</button>
+    </div>
+    
+    <div class="legend">
+        <div class="legend-item">
+            <span class="legend-color person"></span>
+            <span>Artistas</span>
+        </div>
+        <div class="legend-item">
+            <span class="legend-color song"></span>
+            <span>Canciones</span>
+        </div>
+        <div class="legend-item">
+            <span class="legend-color album"></span>
+            <span>Álbumes</span>
+        </div>
+        <div class="legend-item">
+            <span class="legend-color group"></span>
+            <span>Grupos</span>
+        </div>
+        <div class="legend-item">
+            <span class="legend-color label"></span>
+            <span>Discográficas</span>
+        </div>
+    </div>
+    
+    <div id="network-container"></div>
+    <div id="tooltip" class="tooltip"></div>
+    <script src="sailor_simple_network.js"></script>
+</body>
+</html> 
