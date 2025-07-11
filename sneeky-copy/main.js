@@ -1,25 +1,14 @@
-// Main application controller - identical logic to sneeky/2 with data loading
+// Main application controller - identical logic with data loading
 class App {
     constructor() {
         this.networkGraph = new NetworkGraph("#network-graph");
         this.genreMatrix = new GenreMatrix("#genre-matrix");
-        this.influencersNetwork = new InfluencersNetwork("#influencers-network");
         this.topInfluencers = new TopInfluencers("#top-influencers");
-        this.influenceHistogram = new InfluenceHistogram("#influence-histogram");
         
         this.selectedArtistIds = [];
         this.maxHops = 2;
         this.yearRange = [1900, 2025];
-        this.histogramYearRange = [1900, 2025];
         this.influenceMode = 'outgoing';
-        this.selectedInfluenceTypes = new Set([
-            "InStyleOf", "CoverOf", "DirectlySamples", 
-            "LyricalReferenceTo", "InterpolatesFrom"
-        ]);
-        this.histogramInfluenceTypes = new Set([
-            "InStyleOf", "CoverOf", "DirectlySamples", 
-            "LyricalReferenceTo", "InterpolatesFrom"
-        ]);
         
         this.allEdgeTypes = [
             "PerformerOf", "ComposerOf", "ProducerOf", "LyricistOf",
@@ -36,7 +25,7 @@ class App {
 
     async init() {
         try {
-            // Load data using identical logic to sneeky/2
+            // Load data using identical logic 
             await window.dataLoader.loadGraphData('../MC1_graph.json');
             console.log("Data loaded successfully");
             
@@ -65,8 +54,6 @@ class App {
         this.setupArtistSelector();
         this.setupNetworkControls();
         this.setupGenreControls();
-        this.setupInfluencersControls();
-        this.setupHistogramControls();
     }
 
     setupArtistSelector() {
@@ -197,89 +184,6 @@ class App {
         });
     }
 
-    setupInfluencersControls() {
-        // Influence type checkboxes
-        const container = d3.select("#influence-type-checkboxes");
-        container.selectAll("*").remove();
-        
-        const influenceTypes = ["InStyleOf", "CoverOf", "DirectlySamples", "LyricalReferenceTo", "InterpolatesFrom"];
-        
-        influenceTypes.forEach(type => {
-            const label = container.append("label")
-                .style("display", "inline-block")
-                .style("margin", "5px")
-                .style("font-size", "12px");
-            
-            label.append("input")
-                .attr("type", "checkbox")
-                .property("checked", this.selectedInfluenceTypes.has(type))
-                .on("change", (event) => {
-                    if (event.target.checked) {
-                        this.selectedInfluenceTypes.add(type);
-                    } else {
-                        this.selectedInfluenceTypes.delete(type);
-                    }
-                    this.influencersNetwork.setSelectedInfluenceTypes(this.selectedInfluenceTypes);
-                    this.renderInfluencersNetwork();
-                });
-            
-            label.append("span").text(" " + type);
-        });
-
-        // Min notables control
-        d3.select("#min-notables").on("input", (event) => {
-            const minNotables = parseInt(event.target.value);
-            this.influencersNetwork.setMinNotables(minNotables);
-            this.renderInfluencersNetwork();
-        });
-
-        // Show Oceanus Folk checkbox
-        d3.select("#show-oceanus-folk").on("change", (event) => {
-            this.influencersNetwork.setShowOceanusFolk(event.target.checked);
-            this.renderInfluencersNetwork();
-        });
-    }
-
-    setupHistogramControls() {
-        // Histogram year range controls
-        d3.select("#hist-year-min").on("input", (event) => {
-            this.histogramYearRange[0] = parseInt(event.target.value);
-            this.renderInfluenceHistogram();
-        });
-
-        d3.select("#hist-year-max").on("input", (event) => {
-            this.histogramYearRange[1] = parseInt(event.target.value);
-            this.renderInfluenceHistogram();
-        });
-
-        // Histogram influence type checkboxes
-        const container = d3.select("#histogram-influence-types");
-        container.selectAll("*").remove();
-        
-        const influenceTypes = ["InStyleOf", "CoverOf", "DirectlySamples", "LyricalReferenceTo", "InterpolatesFrom"];
-        
-        influenceTypes.forEach(type => {
-            const label = container.append("label")
-                .style("display", "inline-block")
-                .style("margin", "5px")
-                .style("font-size", "12px");
-            
-            label.append("input")
-                .attr("type", "checkbox")
-                .property("checked", this.histogramInfluenceTypes.has(type))
-                .on("change", (event) => {
-                    if (event.target.checked) {
-                        this.histogramInfluenceTypes.add(type);
-                    } else {
-                        this.histogramInfluenceTypes.delete(type);
-                    }
-                    this.renderInfluenceHistogram();
-                });
-            
-            label.append("span").text(" " + type);
-        });
-    }
-
     setupCallbacks() {
         // Set up node click callbacks for cross-visualization interaction
         this.networkGraph.setNodeClickCallback((node) => {
@@ -293,7 +197,7 @@ class App {
     }
 
     setupDefaultSelections() {
-        // Find and select Sailor Shift by default (identical to sneeky/2)
+        // Find and select Sailor Shift by default 
         const nodes = window.dataLoader.nodes;
         const sailor = nodes.find(n => n.name === "Sailor Shift");
         if (sailor) {
@@ -306,9 +210,7 @@ class App {
     renderAll() {
         this.renderNetworkGraph();
         this.renderGenreMatrix();
-        this.renderInfluencersNetwork();
         this.renderTopInfluencers();
-        this.renderInfluenceHistogram();
     }
 
     renderNetworkGraph() {
@@ -328,22 +230,10 @@ class App {
         this.genreMatrix.render(nodes, links, this.yearRange, this.influenceMode);
     }
 
-    renderInfluencersNetwork() {
-        const nodes = window.dataLoader.nodes;
-        const links = window.dataLoader.links;
-        this.influencersNetwork.render(nodes, links, this.yearRange);
-    }
-
     renderTopInfluencers() {
         const nodes = window.dataLoader.nodes;
         const links = window.dataLoader.links;
         this.topInfluencers.render(nodes, links);
-    }
-
-    renderInfluenceHistogram() {
-        const nodes = window.dataLoader.nodes;
-        const links = window.dataLoader.links;
-        this.influenceHistogram.render(nodes, links, this.histogramInfluenceTypes, this.histogramYearRange);
     }
 
     showError(message) {

@@ -1,4 +1,4 @@
-// Data loading functionality identical to sneeky/2
+// Data loading functionality identical 
 class DataLoader {
     constructor() {
         this.nodes = [];
