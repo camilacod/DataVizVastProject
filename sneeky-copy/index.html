@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Musical Influence Network Analysis</title>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        .section {
+            background: white;
+            margin: 20px 0;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .controls {
+            margin: 10px 0;
+            padding: 10px;
+            background: #f8f9fa;
+            border-radius: 4px;
+        }
+        .control-group {
+            margin: 10px;
+            display: inline-block;
+        }
+        label {
+            font-weight: bold;
+            margin-right: 10px;
+        }
+        select, input {
+            margin: 5px;
+            padding: 5px;
+        }
+        .checkbox-group {
+            display: inline-block;
+            margin: 5px;
+        }
+        .tooltip {
+            position: absolute;
+            visibility: hidden;
+            background: white;
+            border: 1px solid #ccc;
+            padding: 8px;
+            border-radius: 4px;
+            box-shadow: 0px 2px 6px rgba(0,0,0,0.2);
+            font-size: 12px;
+            z-index: 1000;
+        }
+        #network-graph, #genre-matrix, #influencers-network {
+            border: 1px solid #ddd;
+        }
+        .legend {
+            display: flex;
+            gap: 10px;
+            font-size: 10px;
+            margin-bottom: 10px;
+            flex-wrap: wrap;
+            background: white;
+            padding: 7px;
+            border-radius: 5px;
+            max-width: 680px;
+        }
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .legend-box {
+            width: 12px;
+            height: 12px;
+            display: inline-block;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Musical Influence Network Analysis</h1>
+        
+        <!-- Network Graph Section -->
+        <div class="section">
+            <h2>Network Graph</h2>
+            <div class="controls">
+                <div class="control-group">
+                    <label for="artist-select">Select Artist:</label>
+                    <select id="artist-select"></select>
+                </div>
+                <div class="control-group">
+                    <label for="max-hops">Connections:</label>
+                    <select id="max-hops">
+                        <option value="1">1</option>
+                        <option value="2" selected>2</option>
+                        <option value="3">3</option>
+                    </select>
+                </div>
+                <div class="control-group">
+                    <label>Show Node Types:</label>
+                    <div id="node-type-filters"></div>
+                </div>
+                <div class="control-group">
+                    <label>Show Edge Types:</label>
+                    <div id="edge-type-filters"></div>
+                </div>
+            </div>
+            <svg id="network-graph" width="1200" height="600"></svg>
+        </div>
+
+        <!-- Genre Analysis Section -->
+        <div class="section">
+            <h2>Genre Influence Matrix</h2>
+            <div class="controls">
+                <div class="control-group">
+                    <label for="year-min">Min Year:</label>
+                    <input type="number" id="year-min" value="1900" min="1900" max="2025">
+                </div>
+                <div class="control-group">
+                    <label for="year-max">Max Year:</label>
+                    <input type="number" id="year-max" value="2025" min="1900" max="2025">
+                </div>
+                <div class="control-group">
+                    <label for="influence-mode">Direction:</label>
+                    <select id="influence-mode">
+                        <option value="outgoing">Outgoing</option>
+                        <option value="incoming">Incoming</option>
+                    </select>
+                </div>
+            </div>
+            <div id="genre-matrix"></div>
+        </div>
+
+        <!-- Top Influencers Temporal Plot Section -->
+        <div class="section">
+            <h2>Top Influencers Timeline</h2>
+            <div id="top-influencers"></div>
+        </div>
+
+    </div>
+
+    <div class="tooltip" id="tooltip"></div>
+
+    <script src="dataLoader.js"></script>
+    <script src="networkGraph.js"></script>
+    <script src="genreMatrix.js"></script>
+    <script src="topInfluencers.js"></script>
+    <script src="main.js"></script>
+</body>
+</html>
